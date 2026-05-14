@@ -1,0 +1,102 @@
+# .claude/ptah/ptah.yml
+#
+# Copy this file to .claude/ptah/ptah.yml and edit as needed.
+#
+# Ptah config — project-level configuration for the Ptah workflow.
+# Declares which external services are wired up for this project,
+# and per-command behavior.
+#
+# If this file doesn't exist, or sections are missing,
+# the workflow falls back to sensible defaults (manual mode for
+# context sources, `plan` mode for /fix).
+
+# ---------------------------------------------------------------
+# Per-command behavior
+#
+# Configure how individual commands behave on this project.
+# All keys are optional — missing keys fall back to defaults.
+# ---------------------------------------------------------------
+commands:
+
+  # /fix — how the agent handles code review findings.
+  fix:
+    # How much the agent asks before applying fixes.
+    # Options:
+    #   auto         — apply all in-scope fixes silently, report at end
+    #   plan         — show one-line plan per finding, wait for one
+    #                  confirmation, apply all in one pass  (default)
+    #   interactive  — ask per finding before applying
+    #
+    # Runtime override via flags: --auto, --plan, --interactive
+    mode: plan
+
+    # Whether to also fix 🟢 minor issues by default.
+    # 🔴 blockers and 🟡 major issues are always in scope.
+    # 💡 suggestions are never auto-fixed.
+    #
+    # Runtime override via flags: --include-minor, --blockers-only
+    include_minor: false
+
+  # /test — whether the testing track is enabled at all on this project.
+  test:
+    # When false (or omitted), /test refuses to run, and /code-review
+    # and /fix route their hand-off straight to /document instead of /test.
+    # Default is false — testing is opt-in per project.
+    #
+    # Set to true on projects where you want Maestro flows as part of
+    # the workflow.
+    enabled: true
+
+  # Future commands can be configured here the same way:
+  #
+  # execute:
+  #   mode: interactive
+
+# ---------------------------------------------------------------
+# Context sources
+#
+# Wire up external ticket services (JIRA, Linear, GitHub) so that
+# /spec and /task can pre-fill from a linked ticket.
+# Leave empty (or omit) to run in fully manual mode.
+# ---------------------------------------------------------------
+context_sources:
+  # JIRA via the Atlassian MCP server.
+  - name: jira
+    type: atlassian
+    flag: --jira                       # CLI-style flag the command accepts
+    id_pattern: "^[A-Z]+-[0-9]+$"      # validates ticket IDs like PROJ-1234
+    fetch_via: atlassian-mcp           # MCP server name to use for fetching
+
+    # How fetched ticket fields map into SPEC.md / TASK.md
+    # Keys on the left = fields in the destination file
+    # Values on the right = fields from the JIRA ticket
+    field_mapping:
+      spec:
+        description: summary           # ticket summary → SPEC.md Description
+        problem: description           # ticket description → SPEC.md Problem
+        acceptance_criteria: acceptance_criteria
+      task:
+        goal: summary
+        context: description
+
+    # Optional: where to put a link back to the original ticket.
+    # Rendered as a small header at the top of the file so the original
+    # is always one click away.
+    backlink_header: true
+
+# Future sources can be added the same way — the commands don't need
+# to know about them specifically:
+#
+#   - name: linear
+#     type: linear
+#     flag: --linear
+#     id_pattern: "^[A-Z]+-[0-9]+$"
+#     fetch_via: linear-mcp
+#     field_mapping: ...
+#
+#   - name: github
+#     type: github
+#     flag: --issue
+#     id_pattern: "^#?[0-9]+$"
+#     fetch_via: github-mcp
+#     field_mapping: ...
