@@ -96,7 +96,6 @@ commands:
 | `.claude/commands/ptah/` | Slash command definitions |
 | `.claude/ptah/` | Ptah's config (`ptah.yml`) and reference docs (`guides/`, `RULES.md`) |
 | `.claude/specs/<feature-name>/` | Per-feature work product (created by `/spec`) |
-| `.maestro/specs/<feature-name>/` | Maestro test flows (separate from Ptah) |
 
 ---
 

@@ -146,10 +146,6 @@ Regardless of mode, the **Stop and ask** rule from `RULES.md` still applies — 
 #### `/test <feature-name>`
 > **Opt-in:** requires `commands.test.enabled: true` in `.claude/ptah/ptah.yml`. Default is disabled.
 
-Analyzes the spec and implementation to identify test scenarios, writes `.md` breakdowns for your review, then — after you confirm — generates one Maestro YAML flow per scenario organized into happy-path, edge-cases, and error-states folders. Runs all flows and documents results.
-
-**Produces:** `.claude/specs/<feature-name>/TEST.md` + Maestro YAML flows
-
 ---
 
 #### `/document <feature-name>`
@@ -198,21 +194,6 @@ Ptah is split across three locations under `.claude/`:
     TEST.md                       ← test results
     README.md                     ← final summary (produced by /document)
     refs/                         ← screenshots, mockups, schema snippets
-```
-
-Maestro test flows live outside `.claude/`, in their own top-level folder:
-
-```
-.maestro/specs/<feature-name>/
-  happy-path/
-    happy-path.md
-    happy_path_<scenario>.yaml
-  edge-cases/
-    edge-cases.md
-    edge_<scenario>.yaml
-  error-states/
-    error-states.md
-    error_<scenario>.yaml
 ```
 
 And the project root holds:

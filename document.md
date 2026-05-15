@@ -61,14 +61,6 @@ Write a clean, human-readable summary to `.claude/specs/<feature-name>/README.md
 **Modified:**
 - `<path>` — <what changed>
 
-<!-- Include the "Test coverage" section below ONLY if testing is enabled.
-     When testing is disabled, omit the section entirely. -->
-## Test coverage
-- Happy path: <X scenarios>
-- Edge cases: <X scenarios>
-- Error states: <X scenarios>
-- Flows: `.maestro/specs/<feature-name>/`
-
 ## Deferred items
 <Minor issues and suggestions from CODE-REVIEW.md that were not fixed.
 "None" if everything was resolved.>
