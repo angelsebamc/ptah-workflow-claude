@@ -4,7 +4,9 @@ Summarize a completed feature into a clean, human-readable record. This is the t
 
 ## Step 1 — Read the context
 
-When the user runs `/document <feature-name>`, read these files from the spec folder:
+When the user runs `/document <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+
+Then read these files from the spec folder:
 
 - `.claude/specs/<feature-name>/SPEC.md`
 - `.claude/specs/<feature-name>/DESIGN.md`
@@ -18,7 +20,7 @@ Also read `.claude/ptah/ptah.yml` to determine whether testing is enabled (`comm
 
 If the spec folder doesn't exist, stop and tell the user:
 
-> "⚠️ No spec found for `<feature-name>`. Run `/spec <feature-name>` first."
+> "⚠️ No spec found for `<spec-id>`. Run `/spec <feature-name>` first."
 
 **Completeness guard.** Check for unresolved work before documenting:
 
@@ -60,6 +62,14 @@ Write a clean, human-readable summary to `.claude/specs/<feature-name>/README.md
 
 **Modified:**
 - `<path>` — <what changed>
+
+<!-- Include the "Test coverage" section below ONLY if testing is enabled.
+     When testing is disabled, omit the section entirely. -->
+## Test coverage
+- Happy path: <X scenarios>
+- Edge cases: <X scenarios>
+- Error states: <X scenarios>
+- Flows: `.maestro/specs/<feature-name>/`
 
 ## Deferred items
 <Minor issues and suggestions from CODE-REVIEW.md that were not fixed.

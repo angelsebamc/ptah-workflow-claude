@@ -4,7 +4,9 @@ Review the implemented code against the design and spec. Document all findings i
 
 ## Step 1 — Read the context
 
-When the user runs `/code-review <feature-name>`, read the following files:
+When the user runs `/code-review <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+
+Then read the following files:
 
 - `.claude/specs/<feature-name>/SPEC.md` — acceptance criteria to verify against
 - `.claude/specs/<feature-name>/DESIGN.md` — intended technical design
@@ -123,15 +125,17 @@ After writing both files, tell the user:
 >
 > 🔴 Blockers: X | 🟡 Major: Y | 🟢 Minor: Z | 💡 Suggestions: W
 >
-> When you're ready, run `/fix <feature-name>` to address the issues."
+> When you're ready, run `/fix <n>` to address the issues."
 
 If there are zero blockers and zero major issues, and testing is **enabled**:
 
-> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/test <feature-name>` directly."
+> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/test <n>` directly."
 
 If there are zero blockers and zero major issues, and testing is **disabled**:
 
-> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/document <feature-name>` directly."
+> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/document <n>` directly."
+
+Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
 
 ---
 

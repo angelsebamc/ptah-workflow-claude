@@ -9,7 +9,9 @@ By default, hides completed work to reduce noise. Pass `--all` to include comple
 When the user runs `/status` (or `/status --all`), apply the **Always read LOGS.md first** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — `/status` _is_ the rule applied broadly: it reads every `LOGS.md` to surface state.
 
 Scan this location:
-- `.claude/specs/*/LOGS.md` — one per feature
+- `.claude/specs/ptah-*/LOGS.md` — one per feature (also include any legacy non-numbered folders under `.claude/specs/*/LOGS.md`)
+
+For each match, extract the spec number `<n>` from the folder name (`ptah-<n>-<slug>`) — legacy folders without a number are listed by their full folder name instead. See **Spec identifiers** in `RULES.md`.
 
 If the folder doesn't exist or is empty, tell the user:
 
@@ -58,24 +60,26 @@ If after filtering nothing remains, tell the user:
 
 ## Step 4 — Print the report
 
-Group by state in this order: **paused → active → just started → completed** (completed only appears with `--all`).
+Group by state in this order: **paused → active → just started → completed** (completed only appears with `--all`). Within each group, sort ascending by spec number.
 
-Use this exact format:
+Use this exact format — the identifier column shows the **number only**, never the slug:
 
 ```
 📋 Status
 
-  ⏸️ <name>           paused at /<command>
-                      blocked on: <one-line summary>
-  🔄 <name>           last: /<command> <status>
-                      next: /<next-command>
-  🆕 <name>           just started, no commands run yet
+  ⏸️ 4                 paused at /<command>
+                       blocked on: <one-line summary>
+  🔄 7                 last: /<command> <status>
+                       next: /<next-command> 7
+  🆕 9                 just started, no commands run yet
 
 (With --all, also:)
-  ✅ <name>           completed YYYY-MM-DD
+  ✅ 2                 completed YYYY-MM-DD
 ```
 
-Keep names left-aligned. Keep the icon column consistent (one space after the icon, then the name). Truncate `blocked on:` to one line — full detail is in `LOGS.md`.
+Include the spec number in the `next:` line so it's directly runnable (e.g. `next: /fix 7`). Keep numbers left-aligned. Keep the icon column consistent (one space after the icon, then the number). Truncate `blocked on:` to one line — full detail is in `LOGS.md`.
+
+Legacy specs without a `ptah-<n>` folder name are listed the same way but show their full folder name in place of the number.
 
 ---
 
@@ -83,7 +87,7 @@ Keep names left-aligned. Keep the icon column consistent (one space after the ic
 
 End with a short prompt that points the user toward the next move:
 
-> "Run `/resume <name>` to load context for one, or run the suggested `next:` command directly if you're ready to continue."
+> "Run `/resume <n>` to load context for one, or run the suggested `next:` command directly if you're ready to continue."
 
 Do **not** automatically run any command. `/status` is read-only — it never modifies files or appends to `LOGS.md`.
 
@@ -95,7 +99,7 @@ Do **not** automatically run any command. `/status` is read-only — it never mo
 
 ```
 /status              ← discovery (you are here)
-/resume <name>       ← load context for a specific spec
+/resume <n>          ← load context for a specific spec
 /spec, /design, ... ← actual work commands
 ```
 

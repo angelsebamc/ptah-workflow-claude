@@ -8,9 +8,7 @@ This folder contains everything Ptah needs. Drop the `.claude/` folder into your
 .claude/
   commands/ptah/        ← 9 slash commands (status, resume, spec, design,
                           implement, code-review, fix, test, document)
-  ptah/                 ← Ptah's config + reference docs
-    README.md           ← project overview, command reference, folder structure
-    RULES.md            ← cross-cutting agent rules (logging, paths, etc.)
+    RULES.md             ← cross-cutting agent rules (logging, paths, spec numbering, etc.)
     ptah.example.yml    ← template for ptah.yml (rename to ptah.yml to use)
     guides/
       logs-format.md    ← strict schema for LOGS.md entries
@@ -32,15 +30,13 @@ INSTALL.md              ← this file
 
    Skip this entirely if you don't need any of that — Ptah works without `ptah.yml`, just with `/test` disabled.
 
-4. **Restart your Claude session** so the new slash commands and `CLAUDE.md` rules get picked up.
-
-5. **Try it.** Run `/status` (you should see "No specs found"), then `/spec my-first-feature` to start.
+5. **Try it.** Run `/status` (you should see "No specs found"), then `/spec my-first-feature` to start. Ptah will create it as `ptah-1-my-first-feature` and every command after that — `/design`, `/implement`, and so on — takes just the number (`1`), not the full name.
 
 ## Where work goes
 
 Once you start using Ptah, a folder will appear under `.claude/` as you work:
 
-- `.claude/specs/<feature-name>/` — created by `/spec`, holds your feature specs
+- `.claude/specs/ptah-<n>-<slug>/` — created by `/spec`, holds your feature specs. `<n>` is an auto-assigned number and `<slug>` is derived from the feature name — see "Spec identifiers" in `RULES.md`.
 
 This is your work product. Don't pre-create it.
 

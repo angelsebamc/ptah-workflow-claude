@@ -4,13 +4,11 @@ Reload the full working context for a spec so the agent can pick up the work as 
 
 `/resume` is read-only — it does not append to `LOGS.md` and does not run the next workflow command. Its job is to **prime the agent**: pull every relevant artifact into context so the next command runs with full knowledge of what came before.
 
-## Step 1 — Locate the spec
+When the user runs `/resume <spec-id>`, resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name.
 
-When the user runs `/resume <feature-name>`, check that `.claude/specs/<feature-name>/` exists.
+If no matching folder exists, stop and tell the user:
 
-If it doesn't, stop and tell the user:
-
-> "⚠️ No spec found for `<feature-name>`. Run `/status` to see what's in flight."
+> "⚠️ No spec found for `<spec-id>`. Run `/status` to see what's in flight."
 
 ---
 
@@ -25,13 +23,11 @@ These give the agent the project-wide context it needs to operate correctly on t
 
 ---
 
-## Step 3 — Load the session history
-
-Read the full `LOGS.md` for the spec at `.claude/specs/<feature-name>/LOGS.md`.
+Read the full `LOGS.md` for the resolved spec folder.
 
 If `LOGS.md` is empty or missing, tell the user:
 
-> "⚠️ No history found for `<feature-name>`. The folder exists but no commands have been logged yet. Start with `/spec <feature-name>`."
+> "⚠️ No history found for `<spec-id>`. The folder exists but no commands have been logged yet. Start with `/spec <feature-name>`."
 
 Otherwise, identify:
 - **The last command entry** (`/<command> completed | paused | failed`) — anchors what state the work is in
@@ -55,18 +51,16 @@ The mapping below tells you which artifacts to load based on the last command lo
 | `/code-review completed` | `SPEC.md`, `DESIGN.md`, `IMPLEMENTATION.md`, `CODE-REVIEW.md` |
 | `/fix completed` | `SPEC.md`, `DESIGN.md`, `IMPLEMENTATION.md`, `CODE-REVIEW.md` (with fix summary) |
 | `/test completed` | `SPEC.md`, `DESIGN.md`, `IMPLEMENTATION.md`, `CODE-REVIEW.md`, `TEST.md` |
-| `/document completed` | All of the above + `README.md` (omit `TEST.md` if testing is disabled) |
-
-Also load any files in `.claude/specs/<feature-name>/refs/` that exist — they're referenced by the spec or design.
+Also load any files in the spec folder's `refs/` that exist — they're referenced by the spec or design.
 
 ---
 
 ## Step 5 — Confirm context is loaded
 
-Print a short summary that proves the loading happened. Use this exact format:
+Print a short summary that proves the loading happened. Use this exact format — the header shows the spec's **number only**, never the slug or full folder name:
 
 ```
-🔄 Resumed <feature-name>
+🔄 Resumed <n>
 
 Loaded:
 - Project rules: CLAUDE.md, .claude/ptah/RULES.md
@@ -85,21 +79,21 @@ Recent changes since then:
 (Repeat for each change entry since the last command. If none: "No change entries since the last command.")
 
 Where you are: <one-line synthesis based on the last command's "Next step:" field>
-```
+If the resolved spec is a legacy folder without a `ptah-<n>` name, show its full folder name in place of `<n>`.
 
 ### Rules for the synthesis line
 
-The `Where you are:` line is the only piece of original prose in the response — everything else is verbatim from `LOGS.md`. Keep it to one sentence. Examples:
+The `Where you are:` line is the only piece of original prose in the response — everything else is verbatim from `LOGS.md`. Keep it to one sentence, and reference the next command by number. Examples:
 
-- `"Implementation finished. Next step: /code-review <feature-name>."`
-- `"Code review done with 2 blockers, 1 major. Next step: /fix <feature-name>."`
-- `"Spec written. Next step: /design <feature-name>."`
+- `"Implementation finished. Next step: /code-review 7."`
+- `"Code review done with 2 blockers, 1 major. Next step: /fix 7."`
+- `"Spec written. Next step: /design 7."`
 
 **Routing override when testing is disabled.** If the `Next step:` field in the last command entry is `/test` but `commands.test.enabled` is `false` (or `ptah.yml` is missing), the synthesis line should suggest `/document` instead. This matches the routing override in `/status`.
 
 If the workflow is complete (last entry is `/document completed`), the synthesis line is:
 
-> `"This work is complete. The full record is in <feature-name>'s folder."`
+> `"This work is complete. The full record is in ptah-<n>'s folder."`
 
 ---
 
@@ -129,15 +123,13 @@ The summary printed in Step 5 is _evidence_ that the loading happened — the re
 
 `/resume` is a meta-command, alongside `/status`:
 
-```
-/status              ← what's in flight?
-/resume <name>       ← load full working context for one spec (you are here)
+/resume <n>          ← load full working context for one spec (you are here)
 /spec, /design, ...  ← actual work commands
 ```
 
 Use `/resume` when:
 - Starting a new session and continuing work from a previous one
-- Switching between two in-flight specs (run `/resume <other-name>` to swap context)
+- Switching between two in-flight specs (run `/resume <other-n>` to swap context)
 - Briefing a fresh agent (or a teammate) on the current state of a feature
 
 `/resume` does not append to any `LOGS.md` — it's purely a read.

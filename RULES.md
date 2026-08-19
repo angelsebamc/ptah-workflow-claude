@@ -89,13 +89,58 @@ commands:
 
 ---
 
+## Spec identifiers
+
+Every spec folder created by `/spec` is named `ptah-<n>-<slug>`, e.g. `ptah-3-user-login`.
+
+- `<n>` — a sequential integer, unique per project
+- `<slug>` — a kebab-case version of the feature name given to `/spec`
+
+### Assigning a number (`/spec` only)
+
+The next number lives in `.claude/ptah/ptah.yml` under `specs.next_id` — this is a plain config value, not something the agent works out by scanning `.claude/specs/`.
+
+When `/spec` creates a new folder:
+
+1. Read `specs.next_id` from `.claude/ptah/ptah.yml`. If the file, or the `specs` section, or the key is missing, treat the next id as `1`.
+2. Use that value as `<n>` for the new folder.
+3. Immediately after creating the folder, write `specs.next_id: <n + 1>` back to `ptah.yml` — creating the file or the `specs:` section if it didn't exist yet, and leaving any other config (`commands:`, `context_sources:`, etc.) untouched.
+
+The agent never infers the next number from existing folder names. Numbers are never reused, even if a folder is later deleted — the counter only moves forward. If a gap needs reclaiming, that's a manual edit to `specs.next_id`, not something any command does automatically.
+
+### Resolving an identifier (every other command)
+
+Every command that takes a spec argument — `/design`, `/implement`, `/code-review`, `/fix`, `/test`, `/document`, `/resume` — accepts any of:
+
+- a bare number: `3`
+- a number with the prefix: `ptah-3`
+- the full folder name: `ptah-3-user-login`
+
+Resolve the argument in this order:
+
+1. If it matches an existing folder name in `.claude/specs/` exactly, use it.
+2. Otherwise, strip a leading `ptah-` if present, take the leading number, and glob `.claude/specs/ptah-<n>-*`. If exactly one folder matches, use it.
+3. Otherwise, treat the argument as a literal legacy folder name — `.claude/specs/<argument>/` — for specs that predate this convention.
+4. If nothing matches any of the above, stop and tell the user no spec was found for `<argument>`, and suggest running `/status`.
+
+This is a single lookup for one already-existing folder, not a scan across all of them — it's unrelated to how `/spec` assigns new numbers above.
+
+### Displaying identifiers
+
+Whenever a command refers to a spec in output shown to the user — `/status` rows, `/resume`'s summary header, or a hand-off message suggesting the next command to run — show **only the number**, e.g. "run `/design 3`". Never surface the slug or full folder name in these contexts.
+
+The one exception is a file path the user is meant to open and review (e.g. "Review it at `.claude/specs/ptah-3-user-login/SPEC.md`") — those need the real, full path.
+
+---
+
 ## Path conventions
 
 | Location | Purpose |
 |----------|---------|
 | `.claude/commands/ptah/` | Slash command definitions |
 | `.claude/ptah/` | Ptah's config (`ptah.yml`) and reference docs (`guides/`, `RULES.md`) |
-| `.claude/specs/<feature-name>/` | Per-feature work product (created by `/spec`) |
+| `.claude/specs/ptah-<n>-<slug>/` | Per-feature work product (created by `/spec`) — see **Spec identifiers** above |
+| `.maestro/specs/ptah-<n>-<slug>/` | Maestro test flows (separate from Ptah), mirrors the spec folder name |
 
 ---
 

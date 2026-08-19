@@ -27,6 +27,24 @@ If tests fail (when testing is enabled):
 /fix → /test → /fix → /test  (until all tests pass)
 ```
 
+## Spec identifiers
+
+Every spec `/spec` creates is numbered: the folder is named `ptah-<n>-<slug>` (e.g. `ptah-3-user-login`), where `<n>` auto-increments and `<slug>` is a kebab-case version of the feature name.
+
+Once a spec exists, every other command accepts just the number:
+
+```
+/design 3
+/implement 3
+/code-review 3
+/fix 3
+/resume 3
+```
+
+The full folder name (`ptah-3-user-login`) or the `ptah-3` form also work — the number is just the fast path. Every `/status` row and hand-off message ("run `/fix 3` next") shows the number only, never the slug.
+
+Numbers are assigned once, in order, and never reused — even if a spec folder is later deleted. Full details (resolution order, edge cases) live in [`RULES.md`](./.claude/ptah/RULES.md) under "Spec identifiers".
+
 ---
 
 ## Testing is optional
@@ -74,10 +92,10 @@ Use this as your first command when sitting down to a clean session.
 
 **Produces:** nothing — just a printed report
 
----
-
-#### `/resume <feature-name>`
+#### `/resume <n>`
 Reloads the full working context for a spec — the project rules, the session history, and every relevant artifact produced so far. The agent ends up primed to run the next workflow command with full continuity, as if the session never ended. Read-only — does not run the next command and does not append to `LOGS.md`.
+
+Accepts the spec number (`3`), `ptah-3`, or the full folder name — see **Spec identifiers** above.
 
 Use this at the start of a new session whenever you're continuing in-flight work.
 
@@ -86,31 +104,29 @@ Use this at the start of a new session whenever you're continuing in-flight work
 ---
 
 ### Workflow commands
-
-#### `/spec <feature-name> [--<source> <id>]`
-Starts a guided conversation to define a solid use case. Creates the full spec folder structure and fills `SPEC.md` through a series of questions — one at a time.
+Starts a guided conversation to define a solid use case. Creates the full spec folder structure — auto-numbered as `ptah-<n>-<slug>` — and fills `SPEC.md` through a series of questions, one at a time.
 
 If Ptah config is present and you pass a source flag (e.g. `--jira PROJ-1234`), the ticket content is pulled in and pre-fills relevant fields. You still review and confirm everything.
 
-**Produces:** `.claude/specs/<feature-name>/SPEC.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/SPEC.md`
 
 ---
 
-#### `/design <feature-name>`
+#### `/design <n>`
 Reads `SPEC.md` and any files in `/refs`, asks clarifying questions if anything is unclear, then produces a thorough technical design covering architecture, data model, API, UI, file structure, and business logic.
 
-**Produces:** `.claude/specs/<feature-name>/DESIGN.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/DESIGN.md`
 
 ---
 
-#### `/implement <feature-name>`
+#### `/implement <n>`
 Reads `DESIGN.md` and implements the feature exactly as designed. Documents what was built, files created/modified, and any deviations from the design.
 
-**Produces:** `.claude/specs/<feature-name>/IMPLEMENTATION.md` + code
+**Produces:** `.claude/specs/ptah-<n>-<slug>/IMPLEMENTATION.md` + code
 
 ---
 
-#### `/code-review <feature-name>`
+#### `/code-review <n>`
 Reviews the implemented code against the spec and design. Documentation only — no code changes. Findings are prioritized as:
 
 | Icon | Level | Action |
@@ -118,13 +134,11 @@ Reviews the implemented code against the spec and design. Documentation only —
 | 🔴 | Blocker | Must fix before moving forward |
 | 🟡 | Major | Should fix before moving forward |
 | 🟢 | Minor | Nice to fix |
-| 💡 | Suggestion | Optional |
-
-**Produces:** `.claude/specs/<feature-name>/CODE-REVIEW.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/CODE-REVIEW.md`
 
 ---
 
-#### `/fix <feature-name> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
+#### `/fix <n> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
 Reads `CODE-REVIEW.md` and applies fixes for all 🔴 blockers and 🟡 major issues. Supports three modes that control how much the agent asks before applying:
 
 | Mode | Behavior |
@@ -139,19 +153,10 @@ Minors and suggestions are deferred by default. Pass `--include-minor` (or set `
 
 Regardless of mode, the **Stop and ask** rule from `RULES.md` still applies — `auto` does not bypass judgment for ambiguous fixes, design changes, or new dependencies.
 
-**Produces:** Updated code + fix summary in `CODE-REVIEW.md`
-
----
-
-#### `/test <feature-name>`
-> **Opt-in:** requires `commands.test.enabled: true` in `.claude/ptah/ptah.yml`. Default is disabled.
-
----
-
-#### `/document <feature-name>`
+**Produces:** Updated code + fix summary in `CODE-REVIEW.md`#### `/document <n>`
 The final step. Writes a clean, human-readable summary of the completed feature. Guards against documenting incomplete work — warns if there are unresolved blockers or failing tests.
 
-**Produces:** `.claude/specs/<feature-name>/README.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/README.md`
 
 ---
 
@@ -183,22 +188,15 @@ Ptah is split across three locations under `.claude/`:
     ptah.yml                      ← optional, wires up external ticket services
     ptah.example.yml              ← template for ptah.yml
     guides/
-      logs-format.md              ← strict schema for LOGS.md entries
-
-  specs/<feature-name>/           ← created by /spec, one per feature
+  specs/ptah-<n>-<slug>/          ← created by /spec, one per feature — see "Spec identifiers"
     LOGS.md                       ← session journal — read first when resuming
     SPEC.md                       ← use case, problem, acceptance criteria
     DESIGN.md                     ← technical approach, file plan, data model
     IMPLEMENTATION.md             ← what was built, deviations, known issues
     CODE-REVIEW.md                ← findings + fix summary
-    TEST.md                       ← test results
     README.md                     ← final summary (produced by /document)
     refs/                         ← screenshots, mockups, schema snippets
-```
 
-And the project root holds:
-
-```
 CLAUDE.md           ← project-wide rules (stack, conventions, logging discipline)
 ```
 
@@ -227,9 +225,7 @@ A quick taste:
 
 The full schema — required fields per command, change entry format, and rules — lives in [`guides/logs-format.md`](./guides/logs-format.md).
 
-The mid-session logging discipline (when to log, when not to) lives in `CLAUDE.md` under "Logging discipline".
-
-When resuming after a break, run `/status` to see what's in flight, then `/resume <name>` to load context for the one you want to continue.
+When resuming after a break, run `/status` to see what's in flight, then `/resume <n>` to load context for the one you want to continue.
 
 ---
 
@@ -246,12 +242,11 @@ When resuming after a break, run `/status` to see what's in flight, then `/resum
 ## Tips
 
 ### Sitting down to a clean session
-- Run `/status` first — it shows what's in flight without needing to remember anything
-- Pass `--all` to also see completed work (useful for audits or briefing teammates)
-- Once you know what to continue, run `/resume <name>` — it loads the project rules, session history, and every relevant artifact into the agent's context, so the next workflow command runs with full continuity
+- Once you know what to continue, run `/resume <n>` — it loads the project rules, session history, and every relevant artifact into the agent's context, so the next workflow command runs with full continuity
 - `/status` and `/resume` are read-only — they never modify files or append to `LOGS.md`
 
 ### Working a feature
+- Every spec gets a number the moment `/spec` creates it — use that number (`/design 3`, `/fix 3`, etc.) for every command after `/spec`, rather than typing the full folder name
 - Add screenshots, mockups, or schema snippets to `refs/` before running `/design` — the agent will use them
 - If `/design` produces open questions, resolve them before running `/implement`
 - `/code-review` is documentation only — it never touches code

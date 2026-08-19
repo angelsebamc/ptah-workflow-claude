@@ -4,7 +4,9 @@ Read the feature design and implement the code. Document what was built in IMPLE
 
 ## Step 1 — Read the design
 
-When the user runs `/implement <feature-name>`, read the following files:
+When the user runs `/implement <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+
+Then read the following files:
 
 - `.claude/specs/<feature-name>/DESIGN.md` — the technical design
 - `.claude/specs/<feature-name>/SPEC.md` — the use case and acceptance criteria
@@ -14,7 +16,7 @@ When the user runs `/implement <feature-name>`, read the following files:
 
 If `DESIGN.md` is empty or missing, stop and tell the user:
 
-> "⚠️ No design found for `<feature-name>`. Run `/design <feature-name>` first."
+> "⚠️ No design found for `<spec-id>`. Run `/design <spec-id>` first."
 
 ---
 
@@ -87,7 +89,9 @@ After writing both files, tell the user:
 >
 > Pay attention to **Deviations from design** and **Known issues** if any.
 >
-> When you're happy with it, run `/code-review <feature-name>` to start the review."
+> When you're happy with it, run `/code-review <n>` to start the review."
+
+Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
 
 ---
 

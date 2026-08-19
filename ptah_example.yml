@@ -4,11 +4,11 @@
 #
 # Ptah config — project-level configuration for the Ptah workflow.
 # Declares which external services are wired up for this project,
-# and per-command behavior.
+# per-command behavior, and the spec numbering counter.
 #
 # If this file doesn't exist, or sections are missing,
 # the workflow falls back to sensible defaults (manual mode for
-# context sources, `plan` mode for /fix).
+# context sources, `plan` mode for /fix, next spec numbered 1).
 
 # ---------------------------------------------------------------
 # Per-command behavior
@@ -51,6 +51,23 @@ commands:
   #
   # execute:
   #   mode: interactive
+
+# ---------------------------------------------------------------
+# Spec numbering
+#
+# Tracks the next number /spec will assign to a new spec folder
+# (ptah-<n>-<slug>). /spec reads this value, uses it, and writes
+# next_id + 1 back — it never scans .claude/specs/ to work out the
+# next number. If this file (or this section) doesn't exist yet,
+# /spec treats the next id as 1 and creates it on first use.
+#
+# You can hand-edit this if you need to (e.g. after manually
+# deleting a spec folder and wanting to reclaim a gap) — just don't
+# expect numbers to be reused automatically, the counter only moves
+# forward on its own.
+# ---------------------------------------------------------------
+specs:
+  next_id: 1
 
 # ---------------------------------------------------------------
 # Context sources
