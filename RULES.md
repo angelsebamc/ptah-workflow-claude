@@ -1,6 +1,6 @@
 # Ptah workflow rules
 
-Cross-cutting rules the agent applies regardless of which slash command is running. These apply to **every** Ptah command (`/spec`, `/design`, `/implement`, `/code-review`, `/fix`, `/test`, `/document`).
+Cross-cutting rules the agent applies regardless of which slash command is running. These apply to **every** Ptah command (`/spec`, `/design`, `/implement`, `/code-review`, `/fix`, `/document`).
 
 ---
 
@@ -18,7 +18,6 @@ This applies before:
 - Writing any design (`/design`)
 - Writing any code (`/implement`)
 - Applying any fix (`/fix`)
-- Writing any test scenario or YAML (`/test`)
 
 If everything is clear, skip the clarifying step entirely and proceed.
 
@@ -67,25 +66,49 @@ The full schema for both command and change entries lives in [`guides/logs-forma
 
 ---
 
-## Testing is optional
+## Spec identifiers
 
-The `/test` step is opt-in per project. It's controlled by `commands.test.enabled` in `.claude/ptah/ptah.yml`, and **defaults to `false`** — testing is off unless a project explicitly enables it.
+Every spec folder created by `/spec` is named `ptah-<n>-<slug>`, e.g. `ptah-3-user-login`.
 
-When testing is **disabled** (the default):
-- `/test` refuses to run and tells the user how to enable it
-- `/code-review` and `/fix` route their hand-off to `/document` instead of `/test`
-- `/document` does not consult `TEST.md` when checking whether a feature is complete
-- `/status` and `/resume` treat `/document` as the next step after `/fix` (or after `/code-review` with no issues)
+- `<n>` — a sequential integer, unique per project
+- `<slug>` — a kebab-case version of the feature name given to `/spec`
 
-When testing is **enabled**, the workflow runs the full track including `/test` exactly as documented in each command file.
+### Assigning a number (`/spec` only)
 
-To enable testing on a project, set this in `.claude/ptah/ptah.yml`:
+The next number lives in `.claude/ptah/ptah.yml` under `specs.next_id` — this is a plain config value, not something the agent works out by scanning `.claude/specs/`.
 
-```yaml
-commands:
-  test:
-    enabled: true
-```
+When `/spec` creates a new folder:
+
+1. Read `specs.next_id` from `.claude/ptah/ptah.yml`. If the file, or the `specs` section, or the key is missing, treat the next id as `1`.
+2. Use that value as `<n>` for the new folder.
+3. Immediately after creating the folder, write `specs.next_id: <n + 1>` back to `ptah.yml` — creating the file or the `specs:` section if it didn't exist yet, and leaving any other config (`commands:`, `context_sources:`, etc.) untouched.
+
+The agent never infers the next number from existing folder names. Numbers are never reused, even if a folder is later deleted — the counter only moves forward. If a gap needs reclaiming, that's a manual edit to `specs.next_id`, not something any command does automatically.
+
+### Resolving an identifier (every other command)
+
+Every command that takes a spec argument — `/design`, `/implement`, `/code-review`, `/fix`, `/document`, `/resume` — accepts any of:
+
+- a bare number: `3`
+- a number with the prefix: `ptah-3`
+- the full folder name: `ptah-3-user-login`
+
+Resolve the argument in this order:
+
+1. If it matches an existing folder name in `.claude/specs/` exactly, use it.
+2. Otherwise, strip a leading `ptah-` if present, take the leading number, and glob `.claude/specs/ptah-<n>-*`. If exactly one folder matches, use it.
+3. Otherwise, treat the argument as a literal legacy folder name — `.claude/specs/<argument>/` — for specs that predate this convention.
+4. If nothing matches any of the above, stop and tell the user no spec was found for `<argument>`, and suggest running `/status`.
+
+This is a single lookup for one already-existing folder, not a scan across all of them — it's unrelated to how `/spec` assigns new numbers above.
+
+### Displaying identifiers
+
+Whenever a command refers to a spec in output shown to the user — `/resume`'s summary header, or a hand-off message suggesting the next command to run — show **only the number**, e.g. "run `/design 3`". Never surface the slug or full folder name in these contexts.
+
+Two exceptions:
+- **`/status` rows** show the full spec name (`ptah-3-user-login`), since the report is a scannable overview meant to be read, not typed. Its `next:` line still uses the bare number, since that's the part you'd actually run.
+- **File paths** the user is meant to open and review (e.g. "Review it at `.claude/specs/ptah-3-user-login/SPEC.md`") need the real, full path.
 
 ---
 
@@ -95,7 +118,7 @@ commands:
 |----------|---------|
 | `.claude/commands/ptah/` | Slash command definitions |
 | `.claude/ptah/` | Ptah's config (`ptah.yml`) and reference docs (`guides/`, `RULES.md`) |
-| `.claude/specs/<feature-name>/` | Per-feature work product (created by `/spec`) |
+| `.claude/specs/ptah-<n>-<slug>/` | Per-feature work product (created by `/spec`) — see **Spec identifiers** above |
 
 ---
 
