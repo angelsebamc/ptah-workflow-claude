@@ -80,7 +80,7 @@ After writing DESIGN.md, append the following entry to `.claude/specs/<feature-n
 - Next step: /implement
 ```
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -103,7 +103,7 @@ Use the number, not the full folder name, when telling the user what to run next
 This command is part of the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → /test
+/spec → /design → /implement → /code-review → /fix → /document
 ```
 
 Each command appends a session entry to `LOGS.md`. When resuming after a break, read `LOGS.md` first to understand where the feature stands.

@@ -37,16 +37,6 @@ commands:
     # Runtime override via flags: --include-minor, --blockers-only
     include_minor: false
 
-  # /test — whether the testing track is enabled at all on this project.
-  test:
-    # When false (or omitted), /test refuses to run, and /code-review
-    # and /fix route their hand-off straight to /document instead of /test.
-    # Default is false — testing is opt-in per project.
-    #
-    # Set to true on projects where you want Maestro flows as part of
-    # the workflow.
-    enabled: true
-
   # Future commands can be configured here the same way:
   #
   # execute:

@@ -57,22 +57,14 @@ This guide defines the schema. The discipline (when to log, when not to) lives i
 - 🟢 Minor (count)
 - 💡 Suggestions (count)
 - Acceptance criteria (`X of Y met`)
-- Next step (`/fix`, or `/test` / `/document` if no issues — depends on `commands.test.enabled`)
+- Next step (`/fix`, or `/document` if no issues)
 
 ### `/fix completed`
 - 🔴 Blockers fixed (count)
 - 🟡 Major issues fixed (count)
 - 🟢 Minor deferred (count)
 - New issues found (`yes — <note>` or `no`)
-- Next step (`/test` if testing is enabled, `/document` otherwise)
-
-### `/test completed`
-- Happy path (`X passed / Y failed`)
-- Edge cases (`X passed / Y failed`)
-- Error states (`X passed / Y failed`)
-- Acceptance criteria covered (`X of Y`)
-- Test results (path)
-- Next step
+- Next step (`/document`)
 
 ### `/document completed`
 - Summary file written (`README.md`)

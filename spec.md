@@ -89,7 +89,6 @@ Create the following structure at `.claude/specs/ptah-<n>-<slug>/`:
   DESIGN.md         ← empty, filled by /design
   IMPLEMENTATION.md ← empty, filled by /implement
   CODE-REVIEW.md    ← empty, filled by /code-review
-  TEST.md           ← empty, filled by /test
   refs/             ← empty folder for screenshots, mockups, references
 ```
 
@@ -205,7 +204,7 @@ After writing SPEC.md, append the following entry to `LOGS.md`:
 - Next step: /design
 ```
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -226,7 +225,7 @@ Use the number, not the full folder name, when telling the user what to run next
 This command is part of the feature track of the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → /test → /document
+/spec → /design → /implement → /code-review → /fix → /document
 ```
 
 Each command appends a session entry to `LOGS.md`. When resuming after a break, read `LOGS.md` first to understand where the feature stands.

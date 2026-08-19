@@ -14,22 +14,15 @@ Then read these files from the spec folder:
 - `.claude/specs/<feature-name>/CODE-REVIEW.md`
 - `.claude/specs/<feature-name>/LOGS.md`
 
-Also read `.claude/ptah/ptah.yml` to determine whether testing is enabled (`commands.test.enabled`, defaults to `false`). If testing is enabled, also read:
-
-- `.claude/specs/<feature-name>/TEST.md`
-
 If the spec folder doesn't exist, stop and tell the user:
 
 > "⚠️ No spec found for `<spec-id>`. Run `/spec <feature-name>` first."
 
-**Completeness guard.** Check for unresolved work before documenting:
+**Completeness guard.** Check `CODE-REVIEW.md` for unresolved 🔴 blockers before documenting.
 
-- Always check `CODE-REVIEW.md` for unresolved 🔴 blockers
-- If testing is enabled, also check `TEST.md` for failing tests
+If unresolved blockers are found, stop and tell the user:
 
-If either check finds unresolved work, stop and tell the user:
-
-> "⚠️ This feature doesn't appear to be fully complete yet. There are unresolved issues in `CODE-REVIEW.md`<, or failing tests in `TEST.md`> (include the second clause only if testing is enabled). Are you sure you want to document it now?"
+> "⚠️ This feature doesn't appear to be fully complete yet. There are unresolved issues in `CODE-REVIEW.md`. Are you sure you want to document it now?"
 
 Wait for confirmation before proceeding.
 
@@ -63,14 +56,6 @@ Write a clean, human-readable summary to `.claude/specs/<feature-name>/README.md
 **Modified:**
 - `<path>` — <what changed>
 
-<!-- Include the "Test coverage" section below ONLY if testing is enabled.
-     When testing is disabled, omit the section entirely. -->
-## Test coverage
-- Happy path: <X scenarios>
-- Edge cases: <X scenarios>
-- Error states: <X scenarios>
-- Flows: `.maestro/specs/<feature-name>/`
-
 ## Deferred items
 <Minor issues and suggestions from CODE-REVIEW.md that were not fixed.
 "None" if everything was resolved.>
@@ -91,7 +76,7 @@ After writing the summary file, append the following to `.claude/specs/<feature-
 - Next step: none — workflow complete ✅
 ```
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -110,9 +95,7 @@ See **LOGS.md format** in the project `README.md` for the full schema.
 This is the final command in the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → [/test] → /document
+/spec → /design → /implement → /code-review → /fix → /document
 ```
-
-`/test` is opt-in per project — controlled by `commands.test.enabled` in `.claude/ptah/ptah.yml`.
 
 Each command appends a session entry to `LOGS.md`. The `README.md` produced here is the permanent record of the work.

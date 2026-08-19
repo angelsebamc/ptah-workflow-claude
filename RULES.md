@@ -1,6 +1,6 @@
 # Ptah workflow rules
 
-Cross-cutting rules the agent applies regardless of which slash command is running. These apply to **every** Ptah command (`/spec`, `/design`, `/implement`, `/code-review`, `/fix`, `/test`, `/document`).
+Cross-cutting rules the agent applies regardless of which slash command is running. These apply to **every** Ptah command (`/spec`, `/design`, `/implement`, `/code-review`, `/fix`, `/document`).
 
 ---
 
@@ -18,7 +18,6 @@ This applies before:
 - Writing any design (`/design`)
 - Writing any code (`/implement`)
 - Applying any fix (`/fix`)
-- Writing any test scenario or YAML (`/test`)
 
 If everything is clear, skip the clarifying step entirely and proceed.
 
@@ -67,28 +66,6 @@ The full schema for both command and change entries lives in [`guides/logs-forma
 
 ---
 
-## Testing is optional
-
-The `/test` step is opt-in per project. It's controlled by `commands.test.enabled` in `.claude/ptah/ptah.yml`, and **defaults to `false`** — testing is off unless a project explicitly enables it.
-
-When testing is **disabled** (the default):
-- `/test` refuses to run and tells the user how to enable it
-- `/code-review` and `/fix` route their hand-off to `/document` instead of `/test`
-- `/document` does not consult `TEST.md` when checking whether a feature is complete
-- `/status` and `/resume` treat `/document` as the next step after `/fix` (or after `/code-review` with no issues)
-
-When testing is **enabled**, the workflow runs the full track including `/test` exactly as documented in each command file.
-
-To enable testing on a project, set this in `.claude/ptah/ptah.yml`:
-
-```yaml
-commands:
-  test:
-    enabled: true
-```
-
----
-
 ## Spec identifiers
 
 Every spec folder created by `/spec` is named `ptah-<n>-<slug>`, e.g. `ptah-3-user-login`.
@@ -110,7 +87,7 @@ The agent never infers the next number from existing folder names. Numbers are n
 
 ### Resolving an identifier (every other command)
 
-Every command that takes a spec argument — `/design`, `/implement`, `/code-review`, `/fix`, `/test`, `/document`, `/resume` — accepts any of:
+Every command that takes a spec argument — `/design`, `/implement`, `/code-review`, `/fix`, `/document`, `/resume` — accepts any of:
 
 - a bare number: `3`
 - a number with the prefix: `ptah-3`
@@ -127,9 +104,11 @@ This is a single lookup for one already-existing folder, not a scan across all o
 
 ### Displaying identifiers
 
-Whenever a command refers to a spec in output shown to the user — `/status` rows, `/resume`'s summary header, or a hand-off message suggesting the next command to run — show **only the number**, e.g. "run `/design 3`". Never surface the slug or full folder name in these contexts.
+Whenever a command refers to a spec in output shown to the user — `/resume`'s summary header, or a hand-off message suggesting the next command to run — show **only the number**, e.g. "run `/design 3`". Never surface the slug or full folder name in these contexts.
 
-The one exception is a file path the user is meant to open and review (e.g. "Review it at `.claude/specs/ptah-3-user-login/SPEC.md`") — those need the real, full path.
+Two exceptions:
+- **`/status` rows** show the full spec name (`ptah-3-user-login`), since the report is a scannable overview meant to be read, not typed. Its `next:` line still uses the bare number, since that's the part you'd actually run.
+- **File paths** the user is meant to open and review (e.g. "Review it at `.claude/specs/ptah-3-user-login/SPEC.md`") need the real, full path.
 
 ---
 
@@ -140,7 +119,6 @@ The one exception is a file path the user is meant to open and review (e.g. "Rev
 | `.claude/commands/ptah/` | Slash command definitions |
 | `.claude/ptah/` | Ptah's config (`ptah.yml`) and reference docs (`guides/`, `RULES.md`) |
 | `.claude/specs/ptah-<n>-<slug>/` | Per-feature work product (created by `/spec`) — see **Spec identifiers** above |
-| `.maestro/specs/ptah-<n>-<slug>/` | Maestro test flows (separate from Ptah), mirrors the spec folder name |
 
 ---
 

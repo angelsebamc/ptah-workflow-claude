@@ -11,7 +11,7 @@ When the user runs `/status` (or `/status --all`), apply the **Always read LOGS.
 Scan this location:
 - `.claude/specs/ptah-*/LOGS.md` — one per feature (also include any legacy non-numbered folders under `.claude/specs/*/LOGS.md`)
 
-For each match, extract the spec number `<n>` from the folder name (`ptah-<n>-<slug>`) — legacy folders without a number are listed by their full folder name instead. See **Spec identifiers** in `RULES.md`.
+For each match, note the **full folder name** (`ptah-<n>-<slug>`) — this is what gets displayed in Step 4 — and the spec number `<n>` extracted from it, needed for the `next:` line. Legacy folders without a `ptah-<n>` prefix are just their own folder name, with no separate number to extract.
 
 If the folder doesn't exist or is empty, tell the user:
 
@@ -22,8 +22,6 @@ If the folder doesn't exist or is empty, tell the user:
 ## Step 2 — Determine state for each spec
 
 For each `LOGS.md`, read the **last entry** to determine state.
-
-Also read `.claude/ptah/ptah.yml` once to determine whether testing is enabled (`commands.test.enabled`, defaults to `false`). This affects how `next:` is reported below.
 
 ### State derivation rules
 
@@ -37,8 +35,6 @@ Look at the heading of the last entry — `## <YYYY-MM-DD HH:MM:SS> — /<comman
 | No entries / empty file | **Just started** | 🆕 |
 
 For active and paused entries, also extract the `Next step:` field from the last entry — it tells the user what command to run next.
-
-**Routing override when testing is disabled.** If the extracted `Next step:` is `/test` but `commands.test.enabled` is `false` (or `ptah.yml` is missing), report it as `/document` instead. This keeps `/status` honest about what the user should actually run next.
 
 For paused entries, also extract `Blocked on:` — that's what the user needs to resolve.
 
@@ -62,24 +58,24 @@ If after filtering nothing remains, tell the user:
 
 Group by state in this order: **paused → active → just started → completed** (completed only appears with `--all`). Within each group, sort ascending by spec number.
 
-Use this exact format — the identifier column shows the **number only**, never the slug:
+Use this exact format — the identifier column shows the **full spec name** (`ptah-<n>-<slug>`), so the report reads as a scannable overview rather than a bare list of numbers. The `next:` line still uses the bare number, since that's what you'd actually type to run it.
 
 ```
 📋 Status
 
-  ⏸️ 4                 paused at /<command>
-                       blocked on: <one-line summary>
-  🔄 7                 last: /<command> <status>
-                       next: /<next-command> 7
-  🆕 9                 just started, no commands run yet
+  ⏸️ ptah-4-dark-mode            paused at /<command>
+                                 blocked on: <one-line summary>
+  🔄 ptah-7-user-login           last: /<command> <status>
+                                 next: /<next-command> 7
+  🆕 ptah-9-export-csv           just started, no commands run yet
 
 (With --all, also:)
-  ✅ 2                 completed YYYY-MM-DD
+  ✅ ptah-2-onboarding-flow      completed YYYY-MM-DD
 ```
 
-Include the spec number in the `next:` line so it's directly runnable (e.g. `next: /fix 7`). Keep numbers left-aligned. Keep the icon column consistent (one space after the icon, then the number). Truncate `blocked on:` to one line — full detail is in `LOGS.md`.
+Include the spec number (not the full name) in the `next:` line so it's directly runnable (e.g. `next: /fix 7`). Left-align the identifier column, padding to the longest name in the list so the status text lines up. Keep the icon column consistent (one space after the icon, then the identifier). Truncate `blocked on:` to one line — full detail is in `LOGS.md`.
 
-Legacy specs without a `ptah-<n>` folder name are listed the same way but show their full folder name in place of the number.
+Legacy specs without a `ptah-<n>` folder name are listed the same way, using their full folder name as-is.
 
 ---
 

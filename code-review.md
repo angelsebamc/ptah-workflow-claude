@@ -85,7 +85,7 @@ Suggestion: <alternative approach>
 
 ## Verdict
 < "Ready for /fix — X blockers, Y major issues" >
-< or "No issues found — skip /fix and run /test directly" >
+< or "No issues found — skip /fix and run /document directly" >
 ```
 
 ---
@@ -104,16 +104,14 @@ After writing CODE-REVIEW.md, append the following entry to `.claude/specs/<feat
 - Next step: <see routing rule below>
 ```
 
-**`Next step:` routing rule.** Read `commands.test.enabled` from `.claude/ptah/ptah.yml` (defaults to `false` if missing or the file doesn't exist).
+**`Next step:` routing rule.**
 
-| Testing enabled? | Blockers/Major found? | `Next step:` value |
-|---|---|---|
-| true | yes | `/fix` |
-| true | no | `/test` |
-| false | yes | `/fix` |
-| false | no | `/document` |
+| Blockers/Major found? | `Next step:` value |
+|---|---|
+| yes | `/fix` |
+| no | `/document` |
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -127,11 +125,7 @@ After writing both files, tell the user:
 >
 > When you're ready, run `/fix <n>` to address the issues."
 
-If there are zero blockers and zero major issues, and testing is **enabled**:
-
-> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/test <n>` directly."
-
-If there are zero blockers and zero major issues, and testing is **disabled**:
+If there are zero blockers and zero major issues:
 
 > "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/document <n>` directly."
 
@@ -144,10 +138,8 @@ Use the number, not the full folder name, when telling the user what to run next
 This command is part of the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → [/test] → /document
+/spec → /design → /implement → /code-review → /fix → /document
 ```
-
-`/test` is opt-in per project — controlled by `commands.test.enabled` in `.claude/ptah/ptah.yml`. When testing is disabled (the default), `/fix` (and `/code-review` with no issues) routes to `/document` instead.
 
 Each command appends a session entry to `LOGS.md`. When resuming after a break, read `LOGS.md` first to understand where the feature stands.
 
