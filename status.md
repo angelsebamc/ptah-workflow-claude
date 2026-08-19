@@ -9,7 +9,9 @@ By default, hides completed work to reduce noise. Pass `--all` to include comple
 When the user runs `/status` (or `/status --all`), apply the **Always read LOGS.md first** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — `/status` _is_ the rule applied broadly: it reads every `LOGS.md` to surface state.
 
 Scan this location:
-- `.claude/specs/*/LOGS.md` — one per feature
+- `.claude/specs/ptah-*/LOGS.md` — one per feature (also include any legacy non-numbered folders under `.claude/specs/*/LOGS.md`)
+
+For each match, note the **full folder name** (`ptah-<n>-<slug>`) — this is what gets displayed in Step 4 — and the spec number `<n>` extracted from it, needed for the `next:` line. Legacy folders without a `ptah-<n>` prefix are just their own folder name, with no separate number to extract.
 
 If the folder doesn't exist or is empty, tell the user:
 
@@ -20,8 +22,6 @@ If the folder doesn't exist or is empty, tell the user:
 ## Step 2 — Determine state for each spec
 
 For each `LOGS.md`, read the **last entry** to determine state.
-
-Also read `.claude/ptah/ptah.yml` once to determine whether testing is enabled (`commands.test.enabled`, defaults to `false`). This affects how `next:` is reported below.
 
 ### State derivation rules
 
@@ -35,8 +35,6 @@ Look at the heading of the last entry — `## <YYYY-MM-DD HH:MM:SS> — /<comman
 | No entries / empty file | **Just started** | 🆕 |
 
 For active and paused entries, also extract the `Next step:` field from the last entry — it tells the user what command to run next.
-
-**Routing override when testing is disabled.** If the extracted `Next step:` is `/test` but `commands.test.enabled` is `false` (or `ptah.yml` is missing), report it as `/document` instead. This keeps `/status` honest about what the user should actually run next.
 
 For paused entries, also extract `Blocked on:` — that's what the user needs to resolve.
 
@@ -58,24 +56,26 @@ If after filtering nothing remains, tell the user:
 
 ## Step 4 — Print the report
 
-Group by state in this order: **paused → active → just started → completed** (completed only appears with `--all`).
+Group by state in this order: **paused → active → just started → completed** (completed only appears with `--all`). Within each group, sort ascending by spec number.
 
-Use this exact format:
+Use this exact format — the identifier column shows the **full spec name** (`ptah-<n>-<slug>`), so the report reads as a scannable overview rather than a bare list of numbers. The `next:` line still uses the bare number, since that's what you'd actually type to run it.
 
 ```
 📋 Status
 
-  ⏸️ <name>           paused at /<command>
-                      blocked on: <one-line summary>
-  🔄 <name>           last: /<command> <status>
-                      next: /<next-command>
-  🆕 <name>           just started, no commands run yet
+  ⏸️ ptah-4-dark-mode            paused at /<command>
+                                 blocked on: <one-line summary>
+  🔄 ptah-7-user-login           last: /<command> <status>
+                                 next: /<next-command> 7
+  🆕 ptah-9-export-csv           just started, no commands run yet
 
 (With --all, also:)
-  ✅ <name>           completed YYYY-MM-DD
+  ✅ ptah-2-onboarding-flow      completed YYYY-MM-DD
 ```
 
-Keep names left-aligned. Keep the icon column consistent (one space after the icon, then the name). Truncate `blocked on:` to one line — full detail is in `LOGS.md`.
+Include the spec number (not the full name) in the `next:` line so it's directly runnable (e.g. `next: /fix 7`). Left-align the identifier column, padding to the longest name in the list so the status text lines up. Keep the icon column consistent (one space after the icon, then the identifier). Truncate `blocked on:` to one line — full detail is in `LOGS.md`.
+
+Legacy specs without a `ptah-<n>` folder name are listed the same way, using their full folder name as-is.
 
 ---
 
@@ -83,7 +83,7 @@ Keep names left-aligned. Keep the icon column consistent (one space after the ic
 
 End with a short prompt that points the user toward the next move:
 
-> "Run `/resume <name>` to load context for one, or run the suggested `next:` command directly if you're ready to continue."
+> "Run `/resume <n>` to load context for one, or run the suggested `next:` command directly if you're ready to continue."
 
 Do **not** automatically run any command. `/status` is read-only — it never modifies files or appends to `LOGS.md`.
 
@@ -95,7 +95,7 @@ Do **not** automatically run any command. `/status` is read-only — it never mo
 
 ```
 /status              ← discovery (you are here)
-/resume <name>       ← load context for a specific spec
+/resume <n>          ← load context for a specific spec
 /spec, /design, ... ← actual work commands
 ```
 

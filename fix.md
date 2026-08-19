@@ -4,24 +4,14 @@ Read the code review findings and fix all blocker and major issues. Document wha
 
 `/fix` supports three modes that control how much the agent asks before applying fixes. The default is `plan`. See **Modes & config** below for details.
 
-## Step 1 — Parse command arguments
-
-The command accepts one positional argument (the feature name) plus optional flags:
+The command accepts one positional argument (a spec identifier — see **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md), bare number, `ptah-<n>`, or full folder name) plus optional flags:
 
 - `--auto` — apply all fixes without asking
 - `--plan` — show the plan, wait for one confirmation, then apply
 - `--interactive` — ask per finding before applying
-- `--include-minor` — also fix 🟢 minor issues in this run
-- `--blockers-only` — skip minors even if config has them enabled
-- `--review <review-name>` — fix against a standalone `/review` instead of a spec (see **Review source** below)
-
-Examples:
-- `/fix user-login` — uses mode from `ptah.yml`, or `plan` if no config
-- `/fix user-login --auto` — applies all fixes silently this run
-- `/fix user-login --interactive --include-minor` — asks per finding, includes minors
-- `/fix --review feature-login` — fix findings from `.claude/reviews/feature-login/REVIEW.md`
-
-> **Review source.** When `--review <review-name>` is passed, the positional feature-name argument is omitted, and `/fix` operates on a standalone review produced by `/review` rather than a spec folder. This changes only **where findings are read from and written to** (Step 3) and **where the run is logged** (Step 8). Mode resolution, scope, the stop-and-ask rule, and the fix loop are all identical. The `Next step:` testing-routing rule does **not** apply in review mode — a standalone review isn't part of the feature track, so there's no `/test`/`/document` handoff (see Step 8).
+- `/fix 3` — uses mode from `ptah.yml`, or `plan` if no config
+- `/fix 3 --auto` — applies all fixes silently this run
+- `/fix 3 --interactive --include-minor` — asks per finding, includes minors
 
 **Mutually-exclusive flag pairs** produce an error and stop:
 - `--auto`, `--plan`, `--interactive` (pick one)
@@ -62,37 +52,16 @@ The config file is never modified by `/fix`. Flags only affect the current run.
 
 ---
 
-## Step 3 — Read the context
+Resolve the spec identifier from Step 1 to a spec folder per **Spec identifiers** in `RULES.md`. The rest of this file uses `<feature-name>` to mean that resolved folder.
 
-**Spec mode (default).** Read the following files:
+Read the following files:
 
 - `.claude/specs/<feature-name>/CODE-REVIEW.md` — all findings from the review
 - `.claude/specs/<feature-name>/DESIGN.md` — original technical design
 - `.claude/specs/<feature-name>/IMPLEMENTATION.md` — what was built
 - `.claude/specs/<feature-name>/LOGS.md` — session history, to understand current state
-- `CLAUDE.md` — project conventions, architecture decisions
-
-**Review mode (`--review <review-name>`).** There is no spec, design, or implementation artifact — read instead:
-
-- `.claude/reviews/<review-name>/REVIEW.md` — all findings (read the **latest pass** if it's a re-review)
-- `.claude/reviews/<review-name>/diff.patch` — the diff the findings refer to, for locating the code
-- `.claude/reviews/<review-name>/LOGS.md` — review history
-- `CLAUDE.md` — project conventions, architecture decisions
-
-If the named review folder or its `REVIEW.md` doesn't exist, stop:
-
-> "⚠️ No review found for `<review-name>`. Run `/review` first, or check the name with the folders under `.claude/reviews/`."
-
-Findings use the same 🔴🟡🟢💡 taxonomy in both modes, so scope resolution from Step 2 is unchanged.
-
-If `CODE-REVIEW.md` has no in-scope issues (no blockers, no major, and minors aren't included), stop and tell the user. The suggested next step depends on whether testing is enabled — read `commands.test.enabled` from `.claude/ptah/ptah.yml` (defaults to `false`):
-
-- Testing enabled → "✅ No in-scope issues to fix. Run `/test <feature-name>` directly."
-- Testing disabled → "✅ No in-scope issues to fix. Run `/document <feature-name>` directly."
-
-In **review mode**, there's no testing routing — if `REVIEW.md` has no in-scope issues, stop with:
-
-> "✅ No in-scope issues to fix in `<review-name>`. The review's blockers and major findings are already clear."
+- Testing enabled → "✅ No in-scope issues to fix. Run `/test <n>` directly."
+- Testing disabled → "✅ No in-scope issues to fix. Run `/document <n>` directly."
 
 ---
 
@@ -159,16 +128,9 @@ These apply regardless of mode:
 - Keep fixes minimal and focused — don't improve things that aren't broken
 - 💡 suggestions are never fixed automatically — only on explicit user request, and only via `interactive` mode for that suggestion
 
----
+## Step 7 — Update CODE-REVIEW.md
 
-## Step 7 — Update the findings file
-
-After all fixes are applied, append a **Fix Summary** section to the findings file:
-
-- Spec mode → `.claude/specs/<feature-name>/CODE-REVIEW.md`
-- Review mode → `.claude/reviews/<review-name>/REVIEW.md`
-
-In both cases the section is appended below the existing findings (in review mode, below the latest pass):
+After all fixes are applied, append a **Fix Summary** section to `.claude/specs/<feature-name>/CODE-REVIEW.md`:
 
 ```markdown
 ## Fix Summary — <date>
@@ -196,12 +158,7 @@ The Fix Summary section is structurally identical across all three modes — onl
 
 ---
 
-## Step 8 — Append to LOGS.md
-
-After updating the findings file, append a `/fix completed` entry to the relevant `LOGS.md`:
-
-- Spec mode → `.claude/specs/<feature-name>/LOGS.md`
-- Review mode → `.claude/reviews/<review-name>/LOGS.md`
+After updating CODE-REVIEW.md, append the following entry to `.claude/specs/<feature-name>/LOGS.md`:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM:SS> — /fix completed
@@ -212,37 +169,28 @@ After updating the findings file, append a `/fix completed` entry to the relevan
 - Skipped by user: <count, or "none">
 - New issues found: <yes — brief note, or "no">
 - Next step: <see routing rule below>
-```
+**`Next step:` routing rule.** Read `commands.test.enabled` from `.claude/ptah/ptah.yml` (defaults to `false` if missing or the file doesn't exist):
 
-**`Next step:` routing rule.**
-
-- **Spec mode** — read `commands.test.enabled` from `.claude/ptah/ptah.yml` (defaults to `false` if missing or the file doesn't exist):
-  - Testing enabled → `/test`
-  - Testing disabled → `/document`
-- **Review mode** — there's no feature-track handoff. Set `Next step:` to `none — review fixes applied` (or `/review <review-name>` if the author should re-review the result).
+- Testing enabled → `/test`
+- Testing disabled → `/document`
 
 See **LOGS.md format** in the project `README.md` for the full schema.
 
 ---
 
-## Step 9 — Hand off to user
+After updating both files, tell the user. The suggested next step depends on whether testing is enabled:
 
-After updating both files, tell the user. The suggested next step depends on mode and, in spec mode, whether testing is enabled:
-
-- Spec mode, testing enabled:
+- Testing enabled:
   > "✅ All in-scope fixes applied (mode: `<mode>`). Review the changes and the fix summary in `.claude/specs/<feature-name>/CODE-REVIEW.md`.
   >
-  > When you're happy with it, run `/test <feature-name>` to run the tests."
+  > When you're happy with it, run `/test <n>` to run the tests."
 
-- Spec mode, testing disabled:
+- Testing disabled:
   > "✅ All in-scope fixes applied (mode: `<mode>`). Review the changes and the fix summary in `.claude/specs/<feature-name>/CODE-REVIEW.md`.
   >
-  > When you're happy with it, run `/document <feature-name>` to finalize the feature."
+  > When you're happy with it, run `/document <n>` to finalize the feature."
 
-- Review mode:
-  > "✅ All in-scope fixes applied (mode: `<mode>`). The fix summary is in `.claude/reviews/<review-name>/REVIEW.md`.
-  >
-  > Push the changes and, if helpful, run `/review <review-name>` for a re-review pass."
+Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
 
 ---
 

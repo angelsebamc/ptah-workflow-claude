@@ -16,36 +16,23 @@ Ptah is a spec-driven workflow, using slash commands. Each command has a single 
 
 ## The workflow
 
-```
-/spec → /design → /implement → /code-review → /fix → [/test] → /document
-```
-
-`/test` is **opt-in per project** — enabled via `commands.test.enabled: true` in `.claude/ptah/ptah.yml`. The default is **disabled**, so by default the workflow runs straight from `/fix` to `/document`. See "Testing is optional" below.
-
-If tests fail (when testing is enabled):
-```
-/fix → /test → /fix → /test  (until all tests pass)
+```mermaid
+flowchart LR
+    Spec["/spec<br/>SPEC.md"] --> Design["/design<br/>DESIGN.md"]
+    Design --> Implement["/implement<br/>IMPLEMENTATION.md"]
+    Implement --> Review["/code-review<br/>CODE-REVIEW.md"]
+    Review -->|blockers or major| Fix["/fix<br/>updated code"]
+    Review -->|no issues| Document["/document<br/>README.md"]
+    Fix --> Document
 ```
 
 ---
 
-## Testing is optional
+## Spec identifiers
 
-The `/test` step is off by default. To turn it on, set this in `.claude/ptah/ptah.yml`:
+Every spec `/spec` creates gets a folder named `ptah-<n>-<slug>` (e.g. `ptah-3-user-login`). Every command after that takes just the number — `/design 3`, `/fix 3`, `/resume 3` — the full folder name works too, but the number is the fast path.
 
-```yaml
-commands:
-  test:
-    enabled: true
-```
-
-When disabled:
-- `/test` refuses to run if invoked
-- `/code-review` and `/fix` route their hand-off straight to `/document`
-- `/document` doesn't check `TEST.md` and omits the "Test coverage" section from the generated README
-- `/status` and `/resume` report `/document` as the next step where they'd otherwise say `/test`
-
-When enabled, the full track including `/test` runs exactly as documented per command.
+Full details — how numbers are assigned, how identifiers resolve, and where they're displayed — live in [`RULES.md`](./.claude/ptah/RULES.md) under "Spec identifiers".
 
 ---
 
@@ -76,8 +63,10 @@ Use this as your first command when sitting down to a clean session.
 
 ---
 
-#### `/resume <feature-name>`
+#### `/resume <n>`
 Reloads the full working context for a spec — the project rules, the session history, and every relevant artifact produced so far. The agent ends up primed to run the next workflow command with full continuity, as if the session never ended. Read-only — does not run the next command and does not append to `LOGS.md`.
+
+Accepts the spec number (`3`), `ptah-3`, or the full folder name — see **Spec identifiers** above.
 
 Use this at the start of a new session whenever you're continuing in-flight work.
 
@@ -88,29 +77,29 @@ Use this at the start of a new session whenever you're continuing in-flight work
 ### Workflow commands
 
 #### `/spec <feature-name> [--<source> <id>]`
-Starts a guided conversation to define a solid use case. Creates the full spec folder structure and fills `SPEC.md` through a series of questions — one at a time.
+Starts a guided conversation to define a solid use case. Creates the full spec folder structure — auto-numbered as `ptah-<n>-<slug>` — and fills `SPEC.md` through a series of questions, one at a time.
 
 If Ptah config is present and you pass a source flag (e.g. `--jira PROJ-1234`), the ticket content is pulled in and pre-fills relevant fields. You still review and confirm everything.
 
-**Produces:** `.claude/specs/<feature-name>/SPEC.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/SPEC.md`
 
 ---
 
-#### `/design <feature-name>`
+#### `/design <n>`
 Reads `SPEC.md` and any files in `/refs`, asks clarifying questions if anything is unclear, then produces a thorough technical design covering architecture, data model, API, UI, file structure, and business logic.
 
-**Produces:** `.claude/specs/<feature-name>/DESIGN.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/DESIGN.md`
 
 ---
 
-#### `/implement <feature-name>`
+#### `/implement <n>`
 Reads `DESIGN.md` and implements the feature exactly as designed. Documents what was built, files created/modified, and any deviations from the design.
 
-**Produces:** `.claude/specs/<feature-name>/IMPLEMENTATION.md` + code
+**Produces:** `.claude/specs/ptah-<n>-<slug>/IMPLEMENTATION.md` + code
 
 ---
 
-#### `/code-review <feature-name>`
+#### `/code-review <n>`
 Reviews the implemented code against the spec and design. Documentation only — no code changes. Findings are prioritized as:
 
 | Icon | Level | Action |
@@ -120,11 +109,11 @@ Reviews the implemented code against the spec and design. Documentation only —
 | 🟢 | Minor | Nice to fix |
 | 💡 | Suggestion | Optional |
 
-**Produces:** `.claude/specs/<feature-name>/CODE-REVIEW.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/CODE-REVIEW.md`
 
 ---
 
-#### `/fix <feature-name> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
+#### `/fix <n> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
 Reads `CODE-REVIEW.md` and applies fixes for all 🔴 blockers and 🟡 major issues. Supports three modes that control how much the agent asks before applying:
 
 | Mode | Behavior |
@@ -143,15 +132,10 @@ Regardless of mode, the **Stop and ask** rule from `RULES.md` still applies — 
 
 ---
 
-#### `/test <feature-name>`
-> **Opt-in:** requires `commands.test.enabled: true` in `.claude/ptah/ptah.yml`. Default is disabled.
+#### `/document <n>`
+The final step. Writes a clean, human-readable summary of the completed feature. Guards against documenting incomplete work — warns if there are unresolved blockers.
 
----
-
-#### `/document <feature-name>`
-The final step. Writes a clean, human-readable summary of the completed feature. Guards against documenting incomplete work — warns if there are unresolved blockers or failing tests.
-
-**Produces:** `.claude/specs/<feature-name>/README.md`
+**Produces:** `.claude/specs/ptah-<n>-<slug>/README.md`
 
 ---
 
@@ -174,7 +158,6 @@ Ptah is split across three locations under `.claude/`:
       implement.md
       code-review.md
       fix.md
-      test.md
       document.md
 
   ptah/                           ← Ptah's config + docs
@@ -185,13 +168,12 @@ Ptah is split across three locations under `.claude/`:
     guides/
       logs-format.md              ← strict schema for LOGS.md entries
 
-  specs/<feature-name>/           ← created by /spec, one per feature
+  specs/ptah-<n>-<slug>/          ← created by /spec, one per feature — see "Spec identifiers"
     LOGS.md                       ← session journal — read first when resuming
     SPEC.md                       ← use case, problem, acceptance criteria
     DESIGN.md                     ← technical approach, file plan, data model
     IMPLEMENTATION.md             ← what was built, deviations, known issues
     CODE-REVIEW.md                ← findings + fix summary
-    TEST.md                       ← test results
     README.md                     ← final summary (produced by /document)
     refs/                         ← screenshots, mockups, schema snippets
 ```
@@ -229,17 +211,13 @@ The full schema — required fields per command, change entry format, and rules 
 
 The mid-session logging discipline (when to log, when not to) lives in `CLAUDE.md` under "Logging discipline".
 
-When resuming after a break, run `/status` to see what's in flight, then `/resume <name>` to load context for the one you want to continue.
+When resuming after a break, run `/status` to see what's in flight, then `/resume <n>` to load context for the one you want to continue.
 
 ---
 
 ## Getting started
 
-1. Place the slash commands at `.claude/commands/ptah/` (so Claude Code picks them up)
-2. Place Ptah's config and guides at `.claude/ptah/` (this includes `RULES.md`, `guides/`, and `ptah.example.yml`)
-3. Add a one-line reference to `.claude/ptah/RULES.md` in your project's `CLAUDE.md` so the agent picks up the workflow rules
-4. (Optional) If your project uses JIRA, Linear, or similar — copy `.claude/ptah/ptah.example.yml` to `.claude/ptah/ptah.yml` and configure it. The same file also configures per-command defaults (e.g. `commands.fix.mode`).
-5. Run `/spec <your-first-feature>`
+See [`INSTALL.md`](./INSTALL.md) for setup steps.
 
 ---
 
@@ -248,17 +226,17 @@ When resuming after a break, run `/status` to see what's in flight, then `/resum
 ### Sitting down to a clean session
 - Run `/status` first — it shows what's in flight without needing to remember anything
 - Pass `--all` to also see completed work (useful for audits or briefing teammates)
-- Once you know what to continue, run `/resume <name>` — it loads the project rules, session history, and every relevant artifact into the agent's context, so the next workflow command runs with full continuity
+- Once you know what to continue, run `/resume <n>` — it loads the project rules, session history, and every relevant artifact into the agent's context, so the next workflow command runs with full continuity
 - `/status` and `/resume` are read-only — they never modify files or append to `LOGS.md`
 
 ### Working a feature
+- Every spec gets a number the moment `/spec` creates it — use that number (`/design 3`, `/fix 3`, etc.) for every command after `/spec`, rather than typing the full folder name
 - Add screenshots, mockups, or schema snippets to `refs/` before running `/design` — the agent will use them
 - If `/design` produces open questions, resolve them before running `/implement`
 - `/code-review` is documentation only — it never touches code
 - `/fix` defaults to `plan` mode — you see the full plan before any code is touched. Set `commands.fix.mode: auto` in `ptah.yml` if you'd rather have it just apply everything, or pass `--auto` on a per-run basis. Use `--interactive` when the review found something risky and you want to triage finding by finding.
 - `/fix` skips 🟢 minor issues by default — pass `--include-minor` or set `commands.fix.include_minor: true` to include them. 💡 suggestions are never auto-fixed.
-- `/test` is opt-in per project — set `commands.test.enabled: true` in `ptah.yml` to use it. When enabled, it shows you the scenario breakdown before writing any YAML, so you can add or remove scenarios at that point. When disabled, `/fix` and `/code-review` route straight to `/document`.
-- `/document` guards against incomplete work — it warns you if blockers are unresolved, and (when testing is enabled) also if tests are failing
+- `/document` guards against incomplete work — it warns you if blockers are unresolved
 
 ### Ptah config
 - Ptah config is opt-in per project

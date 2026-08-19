@@ -4,7 +4,9 @@ Review the implemented code against the design and spec. Document all findings i
 
 ## Step 1 — Read the context
 
-When the user runs `/code-review <feature-name>`, read the following files:
+When the user runs `/code-review <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+
+Then read the following files:
 
 - `.claude/specs/<feature-name>/SPEC.md` — acceptance criteria to verify against
 - `.claude/specs/<feature-name>/DESIGN.md` — intended technical design
@@ -83,7 +85,7 @@ Suggestion: <alternative approach>
 
 ## Verdict
 < "Ready for /fix — X blockers, Y major issues" >
-< or "No issues found — skip /fix and run /test directly" >
+< or "No issues found — skip /fix and run /document directly" >
 ```
 
 ---
@@ -102,16 +104,14 @@ After writing CODE-REVIEW.md, append the following entry to `.claude/specs/<feat
 - Next step: <see routing rule below>
 ```
 
-**`Next step:` routing rule.** Read `commands.test.enabled` from `.claude/ptah/ptah.yml` (defaults to `false` if missing or the file doesn't exist).
+**`Next step:` routing rule.**
 
-| Testing enabled? | Blockers/Major found? | `Next step:` value |
-|---|---|---|
-| true | yes | `/fix` |
-| true | no | `/test` |
-| false | yes | `/fix` |
-| false | no | `/document` |
+| Blockers/Major found? | `Next step:` value |
+|---|---|
+| yes | `/fix` |
+| no | `/document` |
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -123,15 +123,13 @@ After writing both files, tell the user:
 >
 > 🔴 Blockers: X | 🟡 Major: Y | 🟢 Minor: Z | 💡 Suggestions: W
 >
-> When you're ready, run `/fix <feature-name>` to address the issues."
+> When you're ready, run `/fix <n>` to address the issues."
 
-If there are zero blockers and zero major issues, and testing is **enabled**:
+If there are zero blockers and zero major issues:
 
-> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/test <feature-name>` directly."
+> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/document <n>` directly."
 
-If there are zero blockers and zero major issues, and testing is **disabled**:
-
-> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/document <feature-name>` directly."
+Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
 
 ---
 
@@ -140,10 +138,8 @@ If there are zero blockers and zero major issues, and testing is **disabled**:
 This command is part of the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → [/test] → /document
+/spec → /design → /implement → /code-review → /fix → /document
 ```
-
-`/test` is opt-in per project — controlled by `commands.test.enabled` in `.claude/ptah/ptah.yml`. When testing is disabled (the default), `/fix` (and `/code-review` with no issues) routes to `/document` instead.
 
 Each command appends a session entry to `LOGS.md`. When resuming after a break, read `LOGS.md` first to understand where the feature stands.
 

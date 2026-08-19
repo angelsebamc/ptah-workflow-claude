@@ -13,6 +13,8 @@ Examples:
 - `/spec user-login --jira PROJ-1234` — pulls context from JIRA ticket PROJ-1234
 - `/spec user-login --linear ENG-42` — pulls from Linear (if configured)
 
+The feature name is **not** used as the folder name directly — it's kebab-cased into a slug, and the folder itself is numbered automatically from `ptah.yml`. See Step 3 and **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md).
+
 To know which flags are valid, read `ptah.yml` (see Step 2). Any flag not declared in `ptah.yml` should produce an error:
 
 > "⚠️ Unknown flag `--xyz`. Configured sources: <list from ptah.yml>. See `.claude/ptah/ptah.yml`."
@@ -24,7 +26,7 @@ To know which flags are valid, read `ptah.yml` (see Step 2). Any flag not declar
 ### 2a. Load Ptah config
 Read `.claude/ptah/ptah.yml` from the project root.
 
-- If the file does not exist → skip straight to Step 3 (manual mode, same as before).
+- If the file does not exist → skip straight to Step 3 (manual mode, same as before). Note that Step 3 still needs to read/write `specs.next_id` in this file — "doesn't exist" just means there's no external context to fetch, not that the file stays untouched.
 - If `ptah.yml` exists but `context_sources` is empty → also skip to Step 3.
 
 ### 2b. Validate the provided flag
@@ -66,20 +68,46 @@ Report back to the user what was pulled in:
 
 ## Step 3 — Create the folder structure
 
-Create the following structure:
+### 3a. Read the next number
+Read `specs.next_id` from `.claude/ptah/ptah.yml`.
+
+- If the file doesn't exist, or the `specs` section or `next_id` key is missing, treat the next id as `1`.
+- Otherwise, use `specs.next_id` as `<n>`.
+
+This is a plain config read — **never** scan `.claude/specs/` to infer the number. See **Spec identifiers** in `RULES.md`.
+
+### 3b. Build the slug
+Kebab-case the feature name passed as the command argument — lowercase, spaces and underscores become hyphens, punctuation stripped. Example: `user login` → `user-login`.
+
+### 3c. Create the folder
+Create the following structure at `.claude/specs/ptah-<n>-<slug>/`:
 
 ```
-.claude/specs/<feature-name>/
+.claude/specs/ptah-<n>-<slug>/
   LOGS.md           ← running session journal, appended by every command
   SPEC.md           ← will be filled via conversation
   DESIGN.md         ← empty, filled by /design
   IMPLEMENTATION.md ← empty, filled by /implement
   CODE-REVIEW.md    ← empty, filled by /code-review
-  TEST.md           ← empty, filled by /test
   refs/             ← empty folder for screenshots, mockups, references
 ```
 
-Create each file with just a `# <filename>` heading. Confirm to the user that the folder was created.
+Create each file with just a `# <filename>` heading.
+
+### 3d. Update the counter
+Write `specs.next_id: <n + 1>` back to `.claude/ptah/ptah.yml`:
+
+- If `ptah.yml` didn't exist yet, create it containing just:
+  ```yaml
+  specs:
+    next_id: <n + 1>
+  ```
+- If it existed but had no `specs:` section, add one.
+- If it existed with a `specs:` section (and possibly `commands:`, `context_sources:`, etc.), update only `specs.next_id` — leave everything else exactly as it was.
+
+Confirm to the user that the folder was created, showing both the number and the full folder name:
+
+> "Created spec **`<n>`** at `.claude/specs/ptah-<n>-<slug>/`."
 
 ---
 
@@ -87,7 +115,7 @@ Create each file with just a `# <filename>` heading. Confirm to the user that th
 
 Tell the user:
 
-> "Folder created at `.claude/specs/<feature-name>/`. Let's build out the spec together — I'll ask you a few questions to define a solid use case before moving to design."
+> "Folder created at `.claude/specs/ptah-<n>-<slug>/`. Let's build out the spec together — I'll ask you a few questions to define a solid use case before moving to design."
 
 Then guide the user through the following sections **one at a time** — wait for their answer before asking the next question.
 
@@ -160,6 +188,8 @@ If external context was loaded and `backlink_header: true` is set in `ptah.yml`,
 
 If no external context was loaded, omit the `> **Source:**` line entirely.
 
+`<feature-name>` here is the descriptive name (not the folder identifier) — it's fine for this to read naturally, e.g. "SPEC — User login".
+
 ---
 
 ## Step 6 — Append to LOGS.md
@@ -174,7 +204,7 @@ After writing SPEC.md, append the following entry to `LOGS.md`:
 - Next step: /design
 ```
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -182,9 +212,11 @@ See **LOGS.md format** in the project `README.md` for the full schema.
 
 After writing both files, tell the user:
 
-> "✅ `SPEC.md` is ready. Review it at `.claude/specs/<feature-name>/SPEC.md` and add any files to `/refs` if needed.
+> "✅ `SPEC.md` is ready. Review it at `.claude/specs/ptah-<n>-<slug>/SPEC.md` and add any files to `/refs` if needed.
 >
-> When you're happy with it, run `/design <feature-name>` to move to the design phase."
+> When you're happy with it, run `/design <n>` to move to the design phase."
+
+Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
 
 ---
 
@@ -193,7 +225,7 @@ After writing both files, tell the user:
 This command is part of the feature track of the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → /test → /document
+/spec → /design → /implement → /code-review → /fix → /document
 ```
 
 Each command appends a session entry to `LOGS.md`. When resuming after a break, read `LOGS.md` first to understand where the feature stands.

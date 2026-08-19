@@ -4,7 +4,9 @@ Read the feature spec and produce a thorough technical design before any code is
 
 ## Step 1 — Read the spec
 
-When the user runs `/design <feature-name>`, read the following files:
+When the user runs `/design <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+
+Then read the following files:
 
 - `.claude/specs/<feature-name>/SPEC.md` — the use case and acceptance criteria
 - `.claude/specs/<feature-name>/refs/` — any referenced screenshots, mockups, or files
@@ -12,7 +14,7 @@ When the user runs `/design <feature-name>`, read the following files:
 
 If `SPEC.md` is empty or missing, stop and tell the user:
 
-> "⚠️ No spec found for `<feature-name>`. Run `/spec <feature-name>` first."
+> "⚠️ No spec found for `<spec-id>`. Run `/spec <feature-name>` first."
 
 ---
 
@@ -78,7 +80,7 @@ After writing DESIGN.md, append the following entry to `.claude/specs/<feature-n
 - Next step: /implement
 ```
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -90,7 +92,9 @@ After writing both files, tell the user:
 >
 > Pay special attention to **Open questions** — resolve any before moving forward.
 >
-> When you're happy with it, run `/implement <feature-name>` to start implementation."
+> When you're happy with it, run `/implement <n>` to start implementation."
+
+Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
 
 ---
 
@@ -99,7 +103,7 @@ After writing both files, tell the user:
 This command is part of the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → /test
+/spec → /design → /implement → /code-review → /fix → /document
 ```
 
 Each command appends a session entry to `LOGS.md`. When resuming after a break, read `LOGS.md` first to understand where the feature stands.

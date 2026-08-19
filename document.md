@@ -4,7 +4,9 @@ Summarize a completed feature into a clean, human-readable record. This is the t
 
 ## Step 1 — Read the context
 
-When the user runs `/document <feature-name>`, read these files from the spec folder:
+When the user runs `/document <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+
+Then read these files from the spec folder:
 
 - `.claude/specs/<feature-name>/SPEC.md`
 - `.claude/specs/<feature-name>/DESIGN.md`
@@ -12,22 +14,15 @@ When the user runs `/document <feature-name>`, read these files from the spec fo
 - `.claude/specs/<feature-name>/CODE-REVIEW.md`
 - `.claude/specs/<feature-name>/LOGS.md`
 
-Also read `.claude/ptah/ptah.yml` to determine whether testing is enabled (`commands.test.enabled`, defaults to `false`). If testing is enabled, also read:
-
-- `.claude/specs/<feature-name>/TEST.md`
-
 If the spec folder doesn't exist, stop and tell the user:
 
-> "⚠️ No spec found for `<feature-name>`. Run `/spec <feature-name>` first."
+> "⚠️ No spec found for `<spec-id>`. Run `/spec <feature-name>` first."
 
-**Completeness guard.** Check for unresolved work before documenting:
+**Completeness guard.** Check `CODE-REVIEW.md` for unresolved 🔴 blockers before documenting.
 
-- Always check `CODE-REVIEW.md` for unresolved 🔴 blockers
-- If testing is enabled, also check `TEST.md` for failing tests
+If unresolved blockers are found, stop and tell the user:
 
-If either check finds unresolved work, stop and tell the user:
-
-> "⚠️ This feature doesn't appear to be fully complete yet. There are unresolved issues in `CODE-REVIEW.md`<, or failing tests in `TEST.md`> (include the second clause only if testing is enabled). Are you sure you want to document it now?"
+> "⚠️ This feature doesn't appear to be fully complete yet. There are unresolved issues in `CODE-REVIEW.md`. Are you sure you want to document it now?"
 
 Wait for confirmation before proceeding.
 
@@ -81,7 +76,7 @@ After writing the summary file, append the following to `.claude/specs/<feature-
 - Next step: none — workflow complete ✅
 ```
 
-See **LOGS.md format** in the project `README.md` for the full schema.
+See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
@@ -100,9 +95,7 @@ See **LOGS.md format** in the project `README.md` for the full schema.
 This is the final command in the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → [/test] → /document
+/spec → /design → /implement → /code-review → /fix → /document
 ```
-
-`/test` is opt-in per project — controlled by `commands.test.enabled` in `.claude/ptah/ptah.yml`.
 
 Each command appends a session entry to `LOGS.md`. The `README.md` produced here is the permanent record of the work.
