@@ -31,7 +31,7 @@
     it's optional and project-specific.
 
 .PARAMETER RegisterContinueHook
-    Also wire the /continue UserPromptExpansion hook into .claude/settings.json.
+    Also wire the /continue UserPromptExpansion hook into .claude/settings.local.json.
     Merges into the existing "hooks" key if the file already exists, and never
     touches settings.local.json.
 
@@ -167,12 +167,12 @@ try {
 }
 
 # ---------------------------------------------------------------------------
-# 4. (Optional) Register the /continue hook in .claude/settings.json
+# 4. (Optional) Register the /continue hook in .claude/settings.local.json
 # ---------------------------------------------------------------------------
 if ($RegisterContinueHook) {
-    Write-Step "Registering the /continue hook in .claude\settings.json"
+    Write-Step "Registering the /continue hook in .claude\settings.local.json"
 
-    $settingsPath = Join-Path $ClaudeDir 'settings.json'
+    $settingsPath = Join-Path $ClaudeDir 'settings.local.json'
     $hookEntry = [PSCustomObject]@{
         matcher = 'continue'
         hooks   = @(
@@ -198,7 +198,7 @@ if ($RegisterContinueHook) {
         $alreadyThere     = $existingEntries | Where-Object { $_.matcher -eq 'continue' }
 
         if ($alreadyThere -and -not $Force) {
-            Write-Skip "settings.json already has a 'continue' matcher (use -Force to replace it)"
+            Write-Skip "settings.local.json already has a 'continue' matcher (use -Force to replace it)"
         } else {
             $kept = @($existingEntries | Where-Object { $_.matcher -ne 'continue' })
             $json.hooks.UserPromptExpansion = @($kept + $hookEntry)
@@ -216,9 +216,9 @@ if ($RegisterContinueHook) {
         Write-Ok "$settingsPath (created)"
     }
 
-    Write-Warn2 "Verify the matcher: open the /hooks menu in Claude Code after installing and confirm it fires on /continue. Adjust 'matcher' in settings.json if the menu shows a different name."
+    Write-Warn2 "Verify the matcher: open the /hooks menu in Claude Code after installing and confirm it fires on /continue. Adjust 'matcher' in settings.local.json if the menu shows a different name."
 } else {
-    Write-Skip "/continue hook not registered in settings.json (pass -RegisterContinueHook to wire it up; /continue has no fallback without it)"
+    Write-Skip "/continue hook not registered in settings.local.json (pass -RegisterContinueHook to wire it up; /continue has no fallback without it)"
 }
 
 # ---------------------------------------------------------------------------
