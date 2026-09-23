@@ -14,17 +14,33 @@ Then read the following files:
 
 If `SPEC.md` is empty or missing, stop and tell the user:
 
-> "⚠️ No spec found for `<spec-id>`. Run `/spec <feature-name>` first."
+> "⚠️ No design found for `<spec-id>`. Run `/spec <feature-name>` first."
 
 ---
 
-## Step 2 — Clarify before designing
+## Step 2 — Consult prior knowledge
 
-Apply the **Stop and ask** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md). Review the spec and refs; if anything is ambiguous, ask before designing. If everything is clear, skip this step.
+Read `.claude/ptah/knowledge/INDEX.md` if it exists. Scan titles, categories, and tags for anything relevant to this feature — an `architecture` or `dependency` entry touching the same area is worth knowing before designing, not after implementing around it.
+
+This is a cheap scan, not a search — if nothing looks relevant, move on. If something does and you need the full detail:
+
+```
+python3 .claude/ptah/ptah_knowledge.py get <id>
+```
+
+If `INDEX.md` doesn't exist yet, skip silently — expected on a fresh project, not an error.
+
+Per **Knowledge discipline** in `RULES.md`: don't cite this in `LOGS.md`. If a finding changes a design decision, log the decision itself as usual — the knowledge entry is context that informed it, not part of the record.
 
 ---
 
-## Step 3 — Write DESIGN.md
+## Step 3 — Clarify before designing
+
+Apply the **Stop and ask** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md). Review the spec, refs, and anything surfaced in Step 2; if anything is ambiguous, ask before designing. If everything is clear, skip this step.
+
+---
+
+## Step 4 — Write DESIGN.md
 
 Produce a thorough technical design and write it to `.claude/specs/<feature-name>/DESIGN.md`.
 
@@ -68,7 +84,7 @@ Only include sections that are relevant — skip sections that don't apply to th
 
 ---
 
-## Step 4 — Append to LOGS.md
+## Step 5 — Append to LOGS.md
 
 After writing DESIGN.md, append the following entry to `.claude/specs/<feature-name>/LOGS.md`:
 
@@ -84,7 +100,7 @@ See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-forma
 
 ---
 
-## Step 5 — Hand off to user
+## Step 6 — Hand off to user
 
 After writing both files, tell the user:
 

@@ -52,6 +52,8 @@ The config file is never modified by `/fix`. Flags only affect the current run.
 
 ---
 
+## Step 3 — Read context and consult prior knowledge
+
 Resolve the spec identifier from Step 1 to a spec folder per **Spec identifiers** in `RULES.md`. The rest of this file uses `<feature-name>` to mean that resolved folder.
 
 Read the following files:
@@ -62,6 +64,8 @@ Read the following files:
 - `.claude/specs/<feature-name>/LOGS.md` — session history, to understand current state
 - Testing enabled → "✅ No in-scope issues to fix. Run `/test <n>` directly."
 - Testing disabled → "✅ No in-scope issues to fix. Run `/document <n>` directly."
+
+Then read `.claude/ptah/knowledge/INDEX.md` if it exists. Scan for anything relevant to the findings you're about to fix — a `gotcha` entry can turn "the review flagged this" into "this is the same root cause as entry 14, fix it the same way." Cheap scan, not a search; skip silently if `INDEX.md` doesn't exist. Full entry, if needed: `python3 .claude/ptah/ptah_knowledge.py get <id>`. Per **Knowledge discipline** in `RULES.md`, don't cite this in `LOGS.md` — if it changes how a fix is applied, that's part of the fix's own summary, not a separate citation.
 
 ---
 

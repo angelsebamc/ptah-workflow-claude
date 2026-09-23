@@ -7,14 +7,6 @@
 # cheap last-heading read, and injects the result as additionalContext
 # so /continue can skip scanning entirely.
 #
-# Register on the "UserPromptExpansion" event in .claude/settings.json
-# with matcher "continue" — see the "Optional acceleration hook" step
-# in INSTALL.md for the JSON snippet, and verify the matcher name
-# against the /hooks menu after installing.
-#
-# Requires: jq. /continue has no fallback if this hook isn't registered
-# or doesn't fire — it depends on this script entirely. See INSTALL.md.
-
 set -euo pipefail
 cd "${CLAUDE_PROJECT_DIR:-.}"
 

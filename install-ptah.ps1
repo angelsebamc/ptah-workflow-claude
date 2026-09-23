@@ -4,12 +4,13 @@
 
 .DESCRIPTION
     Run this from a checkout of ptah-workflow-claude (or point -SourcePath at one).
-    The repo ships with a flat layout (commands/, hooks/, README.md, RULES.md, ...)
+    The repo ships with a flat layout (commands/, agents/, hooks/, README.md, RULES.md, ...)
     but Ptah expects a reshaped layout inside the target project:
 
         .claude/commands/ptah/*.md                   <- commands/*.md
+        .claude/agents/ptah/*.md                      <- agents/*.md
         .claude/ptah/README.md                        <- README.md
-        .claude/ptah/RULES.md                         <- RULES.md
+        .claude/ptah/RULES.md                          <- RULES.md
         .claude/ptah/guides/logs-format.md            <- logs-format.md
         .claude/ptah/ptah.example.yml                 <- ptah_example.yml
         .claude/ptah/hooks/ptah-continue-resolve.sh   <- hooks/ptah-continue-resolve.sh
@@ -80,10 +81,14 @@ Write-Step "Validating source checkout at $SourcePath"
 
 $requiredSourceItems = @(
     'commands',
+    'agents\ptah-code-reviewer.md',
+    'agents\ptah-reviewer.md',
     'hooks\ptah-continue-resolve.sh',
     'README.md',
     'RULES.md',
     'logs-format.md',
+    'knowledge-format.md',
+    'ptah_knowledge.py',
     'ptah_example.yml',
     'CLAUDE-snippet.md'
 )
@@ -114,15 +119,27 @@ Get-ChildItem -Path (Join-Path $SourcePath 'commands') -Filter '*.md' | ForEach-
 }
 
 # ---------------------------------------------------------------------------
-# 2. Ptah's own docs + config -> .claude/ptah/
+# 2. Subagents -> .claude/agents/ptah/
+# ---------------------------------------------------------------------------
+Write-Step "Installing subagents to .claude\agents\ptah\"
+
+$agentsDest = Join-Path $ClaudeDir 'agents\ptah'
+Get-ChildItem -Path (Join-Path $SourcePath 'agents') -Filter '*.md' | ForEach-Object {
+    Copy-PtahFile -From $_.FullName -To (Join-Path $agentsDest $_.Name)
+}
+
+# ---------------------------------------------------------------------------
+# 3. Ptah's own docs + config -> .claude/ptah/
 # ---------------------------------------------------------------------------
 Write-Step "Installing Ptah docs and config to .claude\ptah\"
 
 $ptahDir = Join-Path $ClaudeDir 'ptah'
-Copy-PtahFile -From (Join-Path $SourcePath 'README.md')        -To (Join-Path $ptahDir 'README.md')
-Copy-PtahFile -From (Join-Path $SourcePath 'RULES.md')         -To (Join-Path $ptahDir 'RULES.md')
-Copy-PtahFile -From (Join-Path $SourcePath 'logs-format.md')   -To (Join-Path $ptahDir 'guides\logs-format.md')
-Copy-PtahFile -From (Join-Path $SourcePath 'ptah_example.yml') -To (Join-Path $ptahDir 'ptah.example.yml')
+Copy-PtahFile -From (Join-Path $SourcePath 'README.md')            -To (Join-Path $ptahDir 'README.md')
+Copy-PtahFile -From (Join-Path $SourcePath 'RULES.md')             -To (Join-Path $ptahDir 'RULES.md')
+Copy-PtahFile -From (Join-Path $SourcePath 'logs-format.md')       -To (Join-Path $ptahDir 'guides\logs-format.md')
+Copy-PtahFile -From (Join-Path $SourcePath 'knowledge-format.md')  -To (Join-Path $ptahDir 'guides\knowledge-format.md')
+Copy-PtahFile -From (Join-Path $SourcePath 'ptah_knowledge.py')    -To (Join-Path $ptahDir 'ptah_knowledge.py')
+Copy-PtahFile -From (Join-Path $SourcePath 'ptah_example.yml')     -To (Join-Path $ptahDir 'ptah.example.yml')
 
 if ($CreateConfig) {
     $ptahYml = Join-Path $ptahDir 'ptah.yml'
@@ -137,7 +154,7 @@ if ($CreateConfig) {
 }
 
 # ---------------------------------------------------------------------------
-# 3. /continue hook script -> .claude/ptah/hooks/
+# 4. /continue hook script -> .claude/ptah/hooks/
 # ---------------------------------------------------------------------------
 Write-Step "Installing the /continue hook script"
 
@@ -167,7 +184,32 @@ try {
 }
 
 # ---------------------------------------------------------------------------
-# 4. (Optional) Register the /continue hook in .claude/settings.local.json
+# 4b. Bootstrap the knowledge base (requires python3, stdlib only)
+# ---------------------------------------------------------------------------
+Write-Step "Bootstrapping the knowledge base"
+
+$knowledgeScript = Join-Path $ptahDir 'ptah_knowledge.py'
+try {
+    Push-Location $ProjectPath
+    python3 --version *> $null
+    if ($LASTEXITCODE -eq 0) {
+        python3 $knowledgeScript init | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Ok "Initialized .claude\ptah\knowledge\knowledge.db"
+        } else {
+            Write-Warn2 "python3 $knowledgeScript init failed - run it manually once python3 is confirmed working."
+        }
+    } else {
+        Write-Warn2 "python3 not found on PATH - /learn and /recall need it. Every other Ptah command still works without it; run 'python3 .claude\ptah\ptah_knowledge.py init' once python3 is installed."
+    }
+} catch {
+    Write-Warn2 "python3 not found on PATH - /learn and /recall need it. Every other Ptah command still works without it; run 'python3 .claude\ptah\ptah_knowledge.py init' once python3 is installed."
+} finally {
+    Pop-Location
+}
+
+# ---------------------------------------------------------------------------
+# 5. (Optional) Register the /continue hook in .claude/settings.local.json
 # ---------------------------------------------------------------------------
 if ($RegisterContinueHook) {
     Write-Step "Registering the /continue hook in .claude\settings.local.json"
@@ -222,7 +264,7 @@ if ($RegisterContinueHook) {
 }
 
 # ---------------------------------------------------------------------------
-# 5. Merge the CLAUDE.md snippet
+# 6. Merge the CLAUDE.md snippet
 # ---------------------------------------------------------------------------
 Write-Step "Merging the Ptah snippet into CLAUDE.md"
 
@@ -250,13 +292,13 @@ if (Test-Path $claudeMdPath) {
 }
 
 # ---------------------------------------------------------------------------
-# 6. Summary
+# 7. Summary
 # ---------------------------------------------------------------------------
 Write-Host ""
 Write-Host "Ptah installed." -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Restart your Claude Code session so the new commands and CLAUDE.md rules load."
+Write-Host "  1. Restart your Claude Code session so the new commands, subagents, and CLAUDE.md rules load."
 Write-Host "  2. Run /status   -> should say 'No specs found.'"
 Write-Host "  3. Run /spec <your-first-feature> to start."
 if (-not $CreateConfig) {
@@ -267,3 +309,4 @@ if ($RegisterContinueHook) {
 } else {
     Write-Host "  5. (optional) Re-run with -RegisterContinueHook if you want /continue to work without typing a spec number."
 }
+Write-Host "  6. Try /learn to capture something, then /recall to look it up - confirms the knowledge base is wired up."

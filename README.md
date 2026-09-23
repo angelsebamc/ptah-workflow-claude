@@ -10,6 +10,7 @@ Ptah is a spec-driven workflow, using slash commands. Each command has a single 
 - **One command, one responsibility** — no command does more than one thing
 - **You stay in control** — every step produces an artifact you review before moving on
 - **Resume anytime** — `LOGS.md` tracks the full session history so you can pick up after days away
+- **Never solve the same gotcha twice** — `/learn` captures a discovery once; every workflow command checks the knowledge base automatically before starting, so it doesn't get rediscovered on the next feature
 - **Service-agnostic** — optional integration with JIRA, Linear, GitHub, or any MCP-backed ticket service through Ptah config
 
 ---
@@ -26,6 +27,8 @@ flowchart LR
     Fix --> Document
 ```
 
+`/learn` and `/recall` sit outside this pipeline — they're callable any time, from any command, on any feature. See **Knowledge base** below.
+
 ---
 
 ## Spec identifiers
@@ -33,6 +36,18 @@ flowchart LR
 Every spec `/spec` creates gets a folder named `ptah-<n>-<slug>` (e.g. `ptah-3-user-login`). Every command after that takes just the number — `/design 3`, `/fix 3`, `/resume 3` — the full folder name works too, but the number is the fast path.
 
 Full details — how numbers are assigned, how identifiers resolve, and where they're displayed — live in [`RULES.md`](./.claude/ptah/RULES.md) under "Spec identifiers".
+
+---
+
+## Knowledge base
+
+Ptah also maintains a persistent, project-wide knowledge base, separate from any one feature's `LOGS.md` — a small SQLite database (`knowledge.db`) plus an auto-regenerated, human-readable mirror (`INDEX.md`), both at `.claude/ptah/knowledge/`. It exists so a gotcha, convention, or dependency quirk discovered once doesn't have to be rediscovered on the next feature, or the one after that.
+
+- **`/learn`** captures a new entry — the only way anything gets written. Nothing is captured automatically.
+- **`/recall`** looks one up directly — by id, tag, category, free text, or a graph traversal of related entries (`--related`).
+- **Every workflow command consults it automatically**, at the start of its own run, by reading `INDEX.md` — a cheap scan, not a search. If nothing's relevant, it costs almost nothing and moves on.
+
+Entries never cite `LOGS.md` and `LOGS.md` never cites them — two separate systems, on purpose. Full schema and design reasoning: [`RULES.md`](./.claude/ptah/RULES.md) under "Knowledge discipline", and [`guides/knowledge-format.md`](./guides/knowledge-format.md) for the wire format and CLI contract. Requires Python 3 (stdlib only — no extra installs).
 
 ---
 
@@ -50,7 +65,7 @@ See `ptah.example.yml` for a working template.
 
 ## Commands
 
-Commands fall into two groups: meta-commands for navigation, and workflow commands.
+Commands fall into three groups: meta-commands for navigation, knowledge commands, and workflow commands.
 
 ### Meta-commands
 
@@ -74,6 +89,22 @@ Use this at the start of a new session whenever you're continuing in-flight work
 
 ---
 
+### Knowledge commands
+
+#### `/learn`
+Captures one new entry in the knowledge base — a `gotcha`, `convention`, `architecture`, `dependency`, `performance`, `security`, or `tooling` finding. Guided: asks for what's missing, checks for related existing entries, then writes.
+
+**Produces:** a new entry in `knowledge.db`, `INDEX.md` regenerated
+
+---
+
+#### `/recall`
+Looks up existing knowledge directly — by id, tag, category, free-text search, or a graph traversal (`--related`) of entries connected to a given one.
+
+**Produces:** nothing — read-only
+
+---
+
 ### Workflow commands
 
 #### `/spec <feature-name> [--<source> <id>]`
@@ -86,21 +117,21 @@ If Ptah config is present and you pass a source flag (e.g. `--jira PROJ-1234`), 
 ---
 
 #### `/design <n>`
-Reads `SPEC.md` and any files in `/refs`, asks clarifying questions if anything is unclear, then produces a thorough technical design covering architecture, data model, API, UI, file structure, and business logic.
+Reads `SPEC.md` and any files in `/refs`, checks the knowledge base for anything relevant, asks clarifying questions if anything is unclear, then produces a thorough technical design covering architecture, data model, API, UI, file structure, and business logic.
 
 **Produces:** `.claude/specs/ptah-<n>-<slug>/DESIGN.md`
 
 ---
 
 #### `/implement <n>`
-Reads `DESIGN.md` and implements the feature exactly as designed. Documents what was built, files created/modified, and any deviations from the design.
+Reads `DESIGN.md`, checks the knowledge base, and implements the feature exactly as designed. Documents what was built, files created/modified, and any deviations from the design.
 
 **Produces:** `.claude/specs/ptah-<n>-<slug>/IMPLEMENTATION.md` + code
 
 ---
 
 #### `/code-review <n>`
-Reviews the implemented code against the spec and design. Documentation only — no code changes. Findings are prioritized as:
+Reviews the implemented code against the spec and design. The actual review runs in an isolated subagent (`ptah-code-reviewer`) with a fresh context and read-only tools — it never sees this session's conversation, so it isn't anchored by the implementer's own reasoning. The subagent checks the knowledge base itself as part of its own reading. Documentation only — no code changes. Findings are prioritized as:
 
 | Icon | Level | Action |
 |------|-------|--------|
@@ -114,7 +145,7 @@ Reviews the implemented code against the spec and design. Documentation only —
 ---
 
 #### `/fix <n> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
-Reads `CODE-REVIEW.md` and applies fixes for all 🔴 blockers and 🟡 major issues. Supports three modes that control how much the agent asks before applying:
+Reads `CODE-REVIEW.md`, checks the knowledge base, and applies fixes for all 🔴 blockers and 🟡 major issues. Supports three modes that control how much the agent asks before applying:
 
 | Mode | Behavior |
 |------|----------|
@@ -133,7 +164,7 @@ Regardless of mode, the **Stop and ask** rule from `RULES.md` still applies — 
 ---
 
 #### `/document <n>`
-The final step. Writes a clean, human-readable summary of the completed feature. Guards against documenting incomplete work — warns if there are unresolved blockers.
+The final step. Writes a clean, human-readable summary of the completed feature. Guards against documenting incomplete work — warns if there are unresolved blockers. Before handing off, also does a final sweep — checks `CODE-REVIEW.md` findings and `LOGS.md` change entries for anything worth capturing permanently, and suggests `/learn` if so (never runs it automatically).
 
 **Produces:** `.claude/specs/ptah-<n>-<slug>/README.md`
 
@@ -141,41 +172,66 @@ The final step. Writes a clean, human-readable summary of the completed feature.
 
 ## Folder structure
 
-Ptah is split across three locations under `.claude/`:
+Ptah is split across four locations under `.claude/`:
 
+- **`agents/ptah/`** — isolated subagents used by `/code-review` and `/review` (fresh context, read-only tools) — namespaced the same way as `commands/ptah/` below
 - **`commands/ptah/`** — the slash command definitions (lives where Claude Code expects commands)
-- **`ptah/`** — Ptah's own config and reference docs
+- **`ptah/`** — Ptah's own config, reference docs, and the knowledge base
 - **`specs/`** — your work product, created as you use Ptah
+
+`/review` also creates a fifth, `.claude/reviews/`, separate from the spec pipeline — see below.
 
 ```
 .claude/
+  agents/
+    ptah/
+      ptah-code-reviewer.md      ← isolated reviewer for /code-review — Read/Grep/Glob only, also reads knowledge/INDEX.md
+      ptah-reviewer.md           ← isolated reviewer for /review — Read/Grep/Glob only, also reads knowledge/INDEX.md
+
   commands/
     ptah/                         ← Ptah's slash commands
       status.md                   ← list in-flight specs
       resume.md                   ← load context for one spec
+      continue.md                 ← auto-resume the most recently active spec
+      learn.md                    ← capture a new knowledge entry
+      recall.md                   ← look up an existing knowledge entry
       spec.md
-      design.md
-      implement.md
-      code-review.md
-      fix.md
-      document.md
+      design.md                    ← consults knowledge/INDEX.md before designing
+      implement.md                 ← consults knowledge/INDEX.md before implementing
+      code-review.md              ← dispatcher — delegates to ptah-code-reviewer
+      fix.md                       ← consults knowledge/INDEX.md before fixing
+      document.md                  ← suggests /learn for anything worth keeping, before handoff
+      review.md                   ← dispatcher — delegates to ptah-reviewer; reviews a diff, not a spec
 
-  ptah/                           ← Ptah's config + docs
+  ptah/                           ← Ptah's config + docs + knowledge base
     README.md                     ← this file
     RULES.md                      ← cross-cutting agent rules (referenced from CLAUDE.md)
     ptah.yml                      ← optional, wires up external ticket services
     ptah.example.yml              ← template for ptah.yml
+    ptah_knowledge.py             ← sole interface to knowledge.db — no other file touches it directly
     guides/
       logs-format.md              ← strict schema for LOGS.md entries
+      knowledge-format.md         ← schema + CLI contract for the knowledge base
+    hooks/
+      ptah-continue-resolve.sh    ← only needed if using /continue
+    knowledge/
+      knowledge.db                ← SQLite — the real knowledge store, committed to git
+      INDEX.md                    ← auto-regenerated mirror, read by workflow commands
 
   specs/ptah-<n>-<slug>/          ← created by /spec, one per feature — see "Spec identifiers"
     LOGS.md                       ← session journal — read first when resuming
     SPEC.md                       ← use case, problem, acceptance criteria
     DESIGN.md                     ← technical approach, file plan, data model
     IMPLEMENTATION.md             ← what was built, deviations, known issues
-    CODE-REVIEW.md                ← findings + fix summary
+    CODE-REVIEW.md                ← written by /code-review from ptah-code-reviewer's findings, + fix summary
     README.md                     ← final summary (produced by /document)
     refs/                         ← screenshots, mockups, schema snippets
+
+  reviews/<review-name>/          ← created by /review — a standalone diff review, not part of the spec pipeline
+    REVIEW.md                     ← written by /review from ptah-reviewer's findings; re-reviews append a new pass
+    LOGS.md                       ← this review's own journal, separate from any spec's LOGS.md
+    diff.patch                    ← snapshot of the diff under review
+    ticket.md                     ← fetched ticket content, only if a source flag (e.g. --jira) was used
 ```
 
 And the project root holds:
@@ -188,7 +244,7 @@ CLAUDE.md           ← project-wide rules (stack, conventions, logging discipli
 
 ## LOGS.md
 
-Every command appends an entry to `LOGS.md` when it completes, and **change entries** are appended in between as work happens (decisions, deviations, scope changes, blockers, corrections). Reading `LOGS.md` top-to-bottom shows the full timeline of a feature.
+Every command appends an entry to `LOGS.md` when it completes, and **change entries** are appended in between as work happens (decisions, deviations, scope changes, blockers, corrections). Reading `LOGS.md` top-to-bottom shows the full timeline of a feature. Knowledge base entries never appear here, and vice versa — see "Knowledge discipline" in `RULES.md`.
 
 A quick taste:
 
@@ -217,8 +273,6 @@ When resuming after a break, run `/status` to see what's in flight, then `/resum
 
 ## Getting started
 
-See [`INSTALL.md`](./INSTALL.md) for setup steps.
-
 ---
 
 ## Tips
@@ -233,10 +287,16 @@ See [`INSTALL.md`](./INSTALL.md) for setup steps.
 - Every spec gets a number the moment `/spec` creates it — use that number (`/design 3`, `/fix 3`, etc.) for every command after `/spec`, rather than typing the full folder name
 - Add screenshots, mockups, or schema snippets to `refs/` before running `/design` — the agent will use them
 - If `/design` produces open questions, resolve them before running `/implement`
-- `/code-review` is documentation only — it never touches code
+- `/code-review` is documentation only — it never touches code. The review itself runs in an isolated subagent with no memory of the `/implement` session, so it isn't swayed by the implementer's own reasoning — see "Why the review is isolated" in `RULES.md`
 - `/fix` defaults to `plan` mode — you see the full plan before any code is touched. Set `commands.fix.mode: auto` in `ptah.yml` if you'd rather have it just apply everything, or pass `--auto` on a per-run basis. Use `--interactive` when the review found something risky and you want to triage finding by finding.
 - `/fix` skips 🟢 minor issues by default — pass `--include-minor` or set `commands.fix.include_minor: true` to include them. 💡 suggestions are never auto-fixed.
-- `/document` guards against incomplete work — it warns you if blockers are unresolved
+- `/document` guards against incomplete work — it warns you if blockers are unresolved, and gives you one last chance to `/learn` anything worth keeping before the feature closes
+
+### Knowledge base
+- Run `/learn` the moment something worth remembering surfaces — mid-implementation, after a review finding, or during any manual debugging outside a Ptah command entirely
+- Nothing is captured automatically — if it's worth keeping, say so explicitly
+- Every workflow command checks `INDEX.md` on its own at the start of a run — you don't need to run `/recall` yourself unless you want to check something directly, or want the graph traversal (`--related`) that a plain scan of `INDEX.md` can't give you
+- Requires Python 3 — stdlib only, no extra installs
 
 ### Ptah config
 - Ptah config is opt-in per project
