@@ -25,6 +25,52 @@ If everything is clear, skip the clarifying step entirely and proceed.
 
 ---
 
+## Why the review is isolated
+
+`/code-review` and `/review` delegate their actual judgment to a dedicated subagent (`ptah-code-reviewer`, `ptah-reviewer` — see `.claude/agents/ptah/`) rather than running the review in the same conversation as the work being reviewed.
+
+A subagent starts with a blank context. It never sees the implementer's live reasoning, discarded approaches, or self-justifications from mid-session — only what's written to `SPEC.md` / `DESIGN.md` / `IMPLEMENTATION.md` / `LOGS.md` and the code itself. That matters: an agent reviewing its own recent work in the same conversation tends to accept its own rationalizations rather than scrutinize them, even when those rationalizations were never written down anywhere a fresh reader could check them.
+
+Two things follow from this, and both commands (and their subagents) are built around them:
+
+- **The reviewer treats `IMPLEMENTATION.md` and `LOGS.md` as claims, not facts.** Its job is to verify what's written against the actual code and against `SPEC.md` / `DESIGN.md`, not to restate what the implementer said happened.
+- **The subagent's tools are read-only** (`Read`, `Grep`, `Glob`). It cannot write `CODE-REVIEW.md` / `REVIEW.md` itself — it returns findings as text, and the dispatching command (`/code-review` or `/review`) writes the file. This makes "documentation only, no code changes" an enforced permission boundary rather than just an instruction.
+
+This isolation applies only to the judgment step. `/fix` runs in the main session and trusts the review's findings rather than re-litigating them — applying a fix should follow what the review already decided, not independently re-derive it.
+
+Isolation also determines where the knowledge base gets consulted for reviews — see "Knowledge discipline" below. Since the dispatching commands pass the subagents nothing beyond a folder path, the subagents read `INDEX.md` themselves, the same way they read `SPEC.md` and `IMPLEMENTATION.md` themselves.
+
+---
+
+## Knowledge discipline
+
+Ptah maintains a persistent, project-wide knowledge base — `.claude/ptah/knowledge/knowledge.db` (SQLite) plus its human-readable mirror `INDEX.md` — separate from any single spec's `LOGS.md`. It exists so a gotcha, convention, or dependency quirk discovered once doesn't have to be rediscovered on the next feature, or the one after that. Full schema and CLI contract: [`guides/knowledge-format.md`](./guides/knowledge-format.md).
+
+### Capture is `/learn`-only
+
+Nothing gets written to `knowledge.db` automatically. Workflow commands never call `/learn` on their own behalf, even when they clearly just hit something learn-worthy — capturing is a judgment call the user makes explicitly, which keeps the knowledge base signal instead of noise. If a command notices something that looks worth keeping, it can *suggest* running `/learn` (see `/document`'s final step), but it never runs it unprompted.
+
+### Consulting knowledge is automatic, and cheap by design
+
+Unlike capture, *consulting* the knowledge base is not optional — every workflow command checks it before doing its main work:
+
+- **Main-session commands** (`/design`, `/implement`, `/fix`, `/document`) read `.claude/ptah/knowledge/INDEX.md` directly, early in their own steps, the same way they already read `LOGS.md` first.
+- **Isolated review subagents** (`ptah-code-reviewer`, `ptah-reviewer`) read `INDEX.md` themselves, as part of their own Step 1 reading list — *not* something the dispatching `/code-review` or `/review` command passes in, since that would violate the isolation described above.
+
+All of them read only `INDEX.md`, never `knowledge.db` directly — `INDEX.md` is titles, categories, tags, and confidence only, deliberately not full entry bodies, so the consult step stays a cheap scan rather than a token-expensive read. Only `/learn` and `/recall` invoke `ptah_knowledge.py` for the full entry, a search, or a graph traversal — and only when something on the index scan actually looked relevant.
+
+If `INDEX.md` doesn't exist yet (no `/learn` has ever run on this project), every consult step skips silently — this is the expected state for a fresh project, not an error.
+
+### Disjoint from LOGS.md — no cross-citation, either direction
+
+Knowledge entries are never cited in any `LOGS.md` entry, and `LOGS.md` content is never written into `knowledge.db`. If something learned from `INDEX.md` changes a decision mid-session, the decision itself gets a normal `LOGS.md` change entry (per "Logging discipline" below) — the knowledge entry is context that informed the decision, not part of the record of what happened. This mirrors the same reasoning as the isolated-review split: two different systems, two different jobs, no blending them.
+
+### `INDEX.md` is disposable
+
+`INDEX.md` is regenerated in full by `ptah_knowledge.py` on every `/learn` write. It is never hand-edited — any manual edit is silently overwritten on the next write, so there's no reason to make one. If it's ever suspected to have drifted from `knowledge.db` (it shouldn't, since regeneration is automatic), `python3 .claude/ptah/ptah_knowledge.py regenerate-index` rebuilds it without touching any data.
+
+---
+
 ## Logging discipline
 
 While working on any spec, append **change entries** to the corresponding `LOGS.md` whenever a meaningful event happens mid-session — not just when a command completes.
@@ -48,6 +94,7 @@ Routine work creates noise — do not log it:
 - Fixing typos, formatting, or reformatting code
 - Restating something already captured in a command's completion entry
 - Internal reasoning steps that don't change anything
+- Consulting `INDEX.md` — reading it is routine, same as reading `LOGS.md`; only log if what it surfaced changed a decision (and then log the decision, not the lookup)
 
 ### Entry format
 
@@ -85,6 +132,8 @@ When `/spec` creates a new folder:
 
 The agent never infers the next number from existing folder names. Numbers are never reused, even if a folder is later deleted — the counter only moves forward. If a gap needs reclaiming, that's a manual edit to `specs.next_id`, not something any command does automatically.
 
+(The knowledge base's entry ids follow a related but distinct rule — see "Knowledge discipline" above and `guides/knowledge-format.md`: SQLite's own `AUTOINCREMENT` owns that counter, since there's a real database to keep it in.)
+
 ### Resolving an identifier (every other command)
 
 Every command that takes a spec argument — `/design`, `/implement`, `/code-review`, `/fix`, `/document`, `/resume` — accepts any of:
@@ -117,8 +166,11 @@ Two exceptions:
 | Location | Purpose |
 |----------|---------|
 | `.claude/commands/ptah/` | Slash command definitions |
+| `.claude/agents/ptah/` | Ptah's subagent definitions — isolated reviewers used by `/code-review` and `/review`. Mirrors `.claude/commands/ptah/`'s convention of namespacing under `ptah/`. See **Why the review is isolated** above |
 | `.claude/ptah/` | Ptah's config (`ptah.yml`) and reference docs (`guides/`, `RULES.md`) |
+| `.claude/ptah/knowledge/` | Ptah's persistent knowledge base — `knowledge.db` (SQLite, sole interface `ptah_knowledge.py`) + `INDEX.md` (auto-regenerated human-readable mirror). Project-wide, not per-spec. See **Knowledge discipline** above |
 | `.claude/specs/ptah-<n>-<slug>/` | Per-feature work product (created by `/spec`) — see **Spec identifiers** above |
+| `.claude/reviews/<review-name>/` | Per-review work product (created by `/review`), separate from the spec pipeline |
 
 ---
 

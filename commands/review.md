@@ -2,7 +2,7 @@
 
 Review a branch or PR diff that has no Ptah spec behind it — typically **someone else's work**. Unlike `/code-review`, which checks in-flight work against its own `SPEC.md`/`DESIGN.md`, `/review` has no intent artifacts to compare against: the baseline is the diff itself, project conventions, and (optionally) a linked ticket.
 
-Documentation only — `/review` never modifies the code under review. Findings persist under `.claude/reviews/<review-name>/` and can optionally be handed to `/fix`.
+Documentation only — `/review` never modifies the code under review. This command captures the diff (and the ticket, if any), then hands the actual judgment off to the `ptah-reviewer` subagent, which runs in its own fresh context and can only `Read`, `Grep`, `Glob` — it has no way to write or edit anything. Findings persist under `.claude/reviews/<review-name>/` and can optionally be handed to `/fix`.
 
 ## Step 1 — Parse command arguments
 
@@ -41,7 +41,7 @@ If `.claude/reviews/<review-name>/` already exists, this is a **re-review** (the
 ### 2b. Load Ptah config (only if a source flag was passed)
 Read `.claude/ptah/ptah.yml`. The config is only needed to resolve a ticket flag — if no source flag was passed, skip straight to Step 3 (standards-only review).
 
-If a source flag was passed, resolve and fetch it using the same rules as `/spec` Step 2 (validate against `id_pattern`, fetch via `fetch_via`, **stop loudly on fetch failure** — do not fall back silently). Keep the ticket's acceptance criteria in memory for Step 4.
+If a source flag was passed, resolve and fetch it using the same rules as `/spec` Step 2 (validate against `id_pattern`, fetch via `fetch_via`, **stop loudly on fetch failure** — do not fall back silently). Keep the fetched ticket content in memory — it gets written to disk in Step 3, since the reviewer subagent can't see anything held only in this conversation.
 
 ---
 
@@ -55,114 +55,75 @@ Resolve the target into a concrete diff:
 
 Apply `--files` as a pathspec filter if provided.
 
-Create the review folder and snapshot the diff so the review has a stable baseline:
+Create the review folder and snapshot everything the subagent will need, since it starts with a blank context and can only read from disk:
 
 ```
 .claude/reviews/<review-name>/
-  REVIEW.md      ← findings (written in Step 5)
+  REVIEW.md      ← findings (assembled in Step 5 from the subagent's output)
   LOGS.md        ← review journal
   diff.patch     ← snapshot of the diff under review
+  ticket.md      ← fetched ticket content, only if a source flag was passed in Step 2
 ```
 
-Write the captured diff to `diff.patch`. If the diff is empty, stop and tell the user:
+Write the captured diff to `diff.patch`. If a ticket was fetched in Step 2b, write its content to `ticket.md`. If the diff is empty, stop and tell the user:
 
 > "⚠️ No changes found for `<target>`. Nothing to review."
 
-> Review no more than 400 lines of diff at a time. If the change is larger, split into logical chunks and note which chunk each finding belongs to.
+> The subagent reviews no more than 400 lines of diff at a time and will chunk larger changes itself — nothing to configure here.
 
 ---
 
-## Step 4 — Review the diff
+## Step 4 — Delegate to the reviewer subagent
 
-There is no design to check against — derive the change's intent from the diff, the branch name, the commit messages, and the ticket if one was linked. Review in this order of priority:
+Invoke the `ptah-reviewer` subagent. Its prompt must contain only the following facts — nothing else from this conversation:
 
-| Priority | Icon | Meaning | Action |
-|----------|------|---------|--------|
-| Blocker | 🔴 | Bug, crash, security risk, data loss | Must fix before merge |
-| Major | 🟡 | Logic issue, missing edge case, test gap | Should fix before merge |
-| Minor | 🟢 | Naming, readability, small improvements | Nice to fix |
-| Suggestion | 💡 | Alternative approach, future consideration | Optional |
+```
+Review .claude/reviews/<review-name>/
+target: <target>
+head: <head-branch> @ <short-sha>
+base: <base-branch> @ <short-sha>
+pass: <N>
+date: <YYYY-MM-DD>
+ticket: <ticket-id> — <url> — <title>   (or "none")
+files filter: <glob, or "none">
+```
 
-**What to focus on:**
-- Logic: Does the change do what it appears to intend? Edge cases — null/empty/unexpected inputs?
-- Security: Is user input validated? Auth checks in place? Any secrets or PII exposed in the diff?
-- Conventions: Does it follow `CLAUDE.md` (stack, patterns, naming)?
-- Regression risk: Does the change touch shared code in a way that could break callers outside the diff?
-- Ticket fit (only if `--jira`/source was passed): Does the change satisfy the ticket's acceptance criteria?
-
-**What to skip:**
-- Formatting and style (linters' job)
-- Naming preferences that don't affect readability
-- Pre-existing issues outside the diff — review the change, not the whole codebase. Note adjacent problems only if the change makes them materially worse.
-
-**How to frame feedback:**
-- Prefer questions over commands: "Have you considered…?" over "Change this to…"
-- Explain *why* something matters, not just *what* to change
-- Acknowledge what's working well — this is someone else's work; be specific and fair
+The subagent reads `diff.patch`, `CLAUDE.md`, and `ticket.md` itself. Don't summarize the diff, narrate the branch's history, or characterize the change beyond these facts — that's exactly the context isolation is meant to avoid.
 
 ---
 
 ## Step 5 — Write REVIEW.md
 
-Write findings to `.claude/reviews/<review-name>/REVIEW.md`. For a re-review, **append** a new dated pass rather than overwriting.
+The subagent returns a `===REVIEW-PASS===` block and a `===SUMMARY===` block (see `.claude/agents/ptah/ptah-reviewer.md` for the exact contract).
 
-```markdown
-# REVIEW — <review-name>
+- **First pass:** write
+  ```markdown
+  # REVIEW — <review-name>
 
-> **Target:** `<target>` (<head-branch> @ <short-sha>)
-> **Base:** `<base-branch> @ <short-sha>`
-> **Source:** [<ticket-id>](<url>) — <title>   (omit this line if no ticket)
-> **Pass:** <N> — <date>
+  <===REVIEW-PASS=== content, verbatim>
+  ```
+- **Re-review (pass 2+):** append a blank line, then the `===REVIEW-PASS===` content, verbatim, to the existing file. Never overwrite prior passes.
 
-## Summary
-<Overall assessment in 2-3 sentences. Is the change solid? Main concern? Safe to merge?>
+If the response doesn't match this shape, don't guess — stop and tell the user:
 
-## Findings
-
-🔴 **BLOCKER: <short title>**
-`<file>:<line>` — <what the issue is and why it matters>
-Have you considered: <question or suggested fix>
-
-🟡 **MAJOR: <short title>**
-`<file>:<line>` — <what the issue is>
-Suggestion: <alternative approach>
-
-🟢 **minor: <short title>**
-`<file>:<line>` — <brief note>
-
-💡 **suggestion: <short title>**
-<Optional idea, not blocking>
-
-## Ticket fit
-<Only if a ticket was linked. Check the change against each acceptance criterion:>
-- [x] <criterion> — met
-- [ ] <criterion> — not met: <reason>
-
-## What's working well
-<Specific, fair acknowledgement of good decisions in the diff>
-
-## Verdict
-< "Request changes — X blockers, Y major issues" >
-< or "Approve with minors — no blockers or major issues" >
-< or "Approve — clean" >
-```
+> "⚠️ The reviewer subagent returned something unexpected. Nothing was written. You can re-run `/review`, or I can show you the raw response."
 
 ---
 
 ## Step 6 — Append to LOGS.md
 
-After writing REVIEW.md, append an entry to `.claude/reviews/<review-name>/LOGS.md`:
+Using the counts from `===SUMMARY===`, append an entry to `.claude/reviews/<review-name>/LOGS.md`:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM:SS> — /review completed (pass <N>)
 - Target: <target>
 - Base: <base-branch> @ <short-sha>
 - Source: <ticket-id, or "none">
-- 🔴 Blockers: <count>
-- 🟡 Major: <count>
-- 🟢 Minor: <count>
-- 💡 Suggestions: <count>
-- Verdict: <request changes | approve with minors | approve>
+- 🔴 Blockers: <blockers>
+- 🟡 Major: <major>
+- 🟢 Minor: <minor>
+- 💡 Suggestions: <suggestions>
+- Verdict: <verdict>
 - Next step: <handoff line — see Step 7>
 ```
 
@@ -200,6 +161,7 @@ Do **not** auto-run `/fix`. `/review` is read-only on the codebase.
 | Output | `.claude/specs/<feature>/CODE-REVIEW.md` | `.claude/reviews/<name>/REVIEW.md` |
 | Part of the pipeline | yes | no |
 | Feeds `/fix` | yes (default) | optional (`/fix --review <name>`) |
+| Reviewer | isolated subagent `ptah-code-reviewer` | isolated subagent `ptah-reviewer` |
 
 ---
 

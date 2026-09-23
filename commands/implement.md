@@ -20,13 +20,29 @@ If `DESIGN.md` is empty or missing, stop and tell the user:
 
 ---
 
-## Step 2 — Clarify before implementing
+## Step 2 — Consult prior knowledge
+
+Read `.claude/ptah/knowledge/INDEX.md` if it exists. Scan titles, categories, and tags for anything relevant — a `gotcha` about a library you're about to call, or a `convention` this codebase already settled on, is worth knowing before writing code around it rather than after.
+
+Cheap scan, not a search — move on if nothing looks relevant. If something does and you need the full writeup:
+
+```
+python3 .claude/ptah/ptah_knowledge.py get <id>
+```
+
+If `INDEX.md` doesn't exist yet, skip silently.
+
+Per **Knowledge discipline** in `RULES.md`: don't cite this in `LOGS.md`. If a finding changes an implementation choice, log the decision itself — the knowledge entry is context, not part of the record.
+
+---
+
+## Step 3 — Clarify before implementing
 
 Apply the **Stop and ask** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md). Review the design; if anything is ambiguous, ask before writing code. If everything is clear, skip this step.
 
 ---
 
-## Step 3 — Implement
+## Step 4 — Implement
 
 Implement the feature following the design exactly. Respect all project conventions from `CLAUDE.md`.
 
@@ -38,7 +54,7 @@ Implement the feature following the design exactly. Respect all project conventi
 
 ---
 
-## Step 4 — Write IMPLEMENTATION.md
+## Step 5 — Write IMPLEMENTATION.md
 
 After implementation is complete, write a summary to `.claude/specs/<feature-name>/IMPLEMENTATION.md`:
 
@@ -63,7 +79,7 @@ After implementation is complete, write a summary to `.claude/specs/<feature-nam
 
 ---
 
-## Step 5 — Append to LOGS.md
+## Step 6 — Append to LOGS.md
 
 After writing IMPLEMENTATION.md, append the following entry to `.claude/specs/<feature-name>/LOGS.md`:
 
@@ -81,7 +97,7 @@ See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-forma
 
 ---
 
-## Step 6 — Hand off to user
+## Step 7 — Hand off to user
 
 After writing both files, tell the user:
 
