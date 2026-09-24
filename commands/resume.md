@@ -1,8 +1,8 @@
 # /resume
 
-Reload the full working context for a spec so the agent can pick up the work as if the session never ended. Run this at the start of a new session before continuing any in-flight work.
+Orient the agent on a spec's current state at the start of a new session, so the next workflow command can be run with confidence. Run this before continuing any in-flight work.
 
-`/resume` is read-only — it does not append to `LOGS.md` and does not run the next workflow command. Its job is to **prime the agent**: pull every relevant artifact into context so the next command runs with full knowledge of what came before.
+`/resume` is read-only — it does not append to `LOGS.md` and does not run the next workflow command. Its job is **orientation, not preloading**: it reads the session history and reports where the work stands. It does not load artifacts — every workflow command (`/design`, `/implement`, `/fix`, etc.) reads its own inputs when it runs, so loading them here would only put the same content in context twice.
 
 ## Step 1 — Locate the spec
 
@@ -14,20 +14,9 @@ If no matching folder exists, stop and tell the user:
 
 ---
 
-## Step 2 — Load the project rules
+## Step 2 — Read the session history
 
-Apply the **Always read LOGS.md first** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md). Read these files in order:
-
-1. `CLAUDE.md` (project root) — stack, conventions, the reference to RULES.md
-2. `.claude/ptah/RULES.md` — workflow rules (logging discipline, stop-and-ask, path conventions)
-
-These give the agent the project-wide context it needs to operate correctly on this work.
-
----
-
-## Step 3 — Load the session history
-
-Read the full `LOGS.md` for the resolved spec folder.
+Apply the **Always read LOGS.md first** rule from `RULES.md`: read the full `LOGS.md` for the resolved spec folder. This is the only file `/resume` reads.
 
 If `LOGS.md` is empty or missing, tell the user:
 
@@ -35,51 +24,55 @@ If `LOGS.md` is empty or missing, tell the user:
 
 Otherwise, identify:
 - **The last command entry** (`/<command> completed | paused | failed`) — anchors what state the work is in
-- **All change entries since that last command entry** — captures decisions, deviations, and corrections from the most recent step
+- **All change entries since that last command entry** — decisions, deviations, and corrections from the most recent step
+- **Counts** of command entries and change entries in the whole file
 
 ---
 
-## Step 4 — Load the relevant artifacts
+## Step 3 — Inventory artifacts and refs
 
-Load **only the artifacts that exist and are relevant for the current state**. Do not load artifacts that haven't been produced yet — they don't exist.
+Derive which artifacts have been produced from the command entries in `LOGS.md` — not by opening the files:
 
-The mapping below tells you which artifacts to load based on the last command logged.
-
-| Last command logged | Artifacts to load |
+| Command logged as completed | Artifact produced |
 |---|---|
-| `/spec completed` | `SPEC.md` |
-| `/design completed` | `SPEC.md`, `DESIGN.md` |
-| `/implement completed` | `SPEC.md`, `DESIGN.md`, `IMPLEMENTATION.md` |
-| `/code-review completed` | `SPEC.md`, `DESIGN.md`, `IMPLEMENTATION.md`, `CODE-REVIEW.md` |
-| `/fix completed` | `SPEC.md`, `DESIGN.md`, `IMPLEMENTATION.md`, `CODE-REVIEW.md` (with fix summary) |
-| `/document completed` | All of the above + `README.md` |
+| `/spec` | `SPEC.md` |
+| `/design` | `DESIGN.md` |
+| `/implement` | `IMPLEMENTATION.md` |
+| `/code-review` | `CODE-REVIEW.md` |
+| `/fix` | `CODE-REVIEW.md` (fix summary appended) |
+| `/document` | `README.md` |
 
-Also load any files in the spec folder's `refs/` that exist — they're referenced by the spec or design.
+List the filenames in the spec folder's `refs/` with `Glob`. Filenames only — do not open them.
+
+### Do not read
+
+- Any artifact (`SPEC.md`, `DESIGN.md`, `IMPLEMENTATION.md`, `CODE-REVIEW.md`, `README.md`)
+- Anything in `refs/`
+- Any source file, including files listed in `IMPLEMENTATION.md`
+- `CLAUDE.md` or `RULES.md` — `CLAUDE.md` is already in context from session start, and the next command follows its references to `RULES.md` as needed
+- `.claude/ptah/knowledge/INDEX.md` — workflow commands consult it themselves
 
 ---
 
-## Step 5 — Confirm context is loaded
+## Step 4 — Print the summary
 
-Print a short summary that proves the loading happened. Use this exact format — the header shows the spec's **number only**, never the slug or full folder name:
+Use this exact format — the header shows the spec's **number only**, never the slug or full folder name:
 
 ```
 🔄 Resumed <n>
 
-Loaded:
-- Project rules: CLAUDE.md, .claude/ptah/RULES.md
-- Session history: LOGS.md (<count> command entries, <count> change entries)
-- Artifacts: <comma-separated list of artifact filenames>
-- Refs: <list of refs/ filenames, or "none">
+History: LOGS.md (<count> command entries, <count> change entries)
+Artifacts: <comma-separated artifact filenames from Step 3>
+Refs: <comma-separated refs/ filenames, or "none">
 
 Last command:
 ## <heading line, verbatim>
 - <fields, verbatim>
 
-Recent changes since then:
-## <change entry heading, verbatim>
-- <fields, verbatim>
+Changes since then:
+- <HH:MM> <type> — <the entry's "What:" value>
 
-(Repeat for each change entry since the last command. If none: "No change entries since the last command.")
+(One line per change entry since the last command. If none: "None.")
 
 Where you are: <one-line synthesis based on the last command's "Next step:" field>
 ```
@@ -88,11 +81,13 @@ If the resolved spec is a legacy folder without a `ptah-<n>` name, show its full
 
 ### Rules for the synthesis line
 
-The `Where you are:` line is the only piece of original prose in the response — everything else is verbatim from `LOGS.md`. Keep it to one sentence, and reference the next command by number. Examples:
+The `Where you are:` line is the only piece of original prose in the response — everything else comes from `LOGS.md`. Keep it to one sentence, and reference the next command by number. Examples:
 
 - `"Implementation finished. Next step: /code-review 7."`
 - `"Code review done with 2 blockers, 1 major. Next step: /fix 7."`
 - `"Spec written. Next step: /design 7."`
+
+If the last entry is `paused`, name what it's blocked on instead of a next command, e.g. `"Paused during /implement, blocked on: <Blocked on: value>."`
 
 If the workflow is complete (last entry is `/document completed`), the synthesis line is:
 
@@ -100,25 +95,21 @@ If the workflow is complete (last entry is `/document completed`), the synthesis
 
 ---
 
-## Step 6 — Hand off to user
+## Step 5 — Hand off to user
 
 End with:
 
-> "Context loaded. Run the next command yourself when you're ready."
+> "Oriented on <n>. Run the next command yourself when you're ready — it loads the artifacts it needs."
 
 Do **not** auto-run anything. Do **not** append to `LOGS.md` — `/resume` is purely a read.
-
-The user now has an agent primed with everything needed to execute the next workflow command with full continuity.
 
 ---
 
 ## What `/resume` is and isn't
 
-**It is:** a context-loading command. It pulls every relevant artifact into the agent's working memory so the next workflow command (`/design`, `/implement`, `/fix`, etc.) runs with full knowledge of what came before.
+**It is:** an orientation command. It reads `LOGS.md` and reports where the work stands, so you and the agent agree on the next step before running it.
 
-**It isn't:** a state report for the user (use `/status` for that), and isn't a workflow command (it never produces or modifies artifacts, never appends to `LOGS.md`).
-
-The summary printed in Step 5 is _evidence_ that the loading happened — the real value is the agent's context window now contains everything needed to continue.
+**It isn't:** a context preloader. Artifacts, refs, and code are loaded by the workflow command that needs them, when it runs. It also isn't a state report across specs (use `/status` for that), and isn't a workflow command — it never produces or modifies artifacts, never appends to `LOGS.md`.
 
 ---
 
@@ -128,13 +119,13 @@ The summary printed in Step 5 is _evidence_ that the loading happened — the re
 
 ```
 /status              ← what's in flight?
-/resume <n>          ← load full working context for one spec (you are here)
+/resume <n>          ← orient on one spec (you are here)
 /spec, /design, ...  ← actual work commands
 ```
 
 Use `/resume` when:
 - Starting a new session and continuing work from a previous one
-- Switching between two in-flight specs (run `/resume <other-n>` to swap context)
+- Switching between two in-flight specs (run `/resume <other-n>` to swap)
 - Briefing a fresh agent (or a teammate) on the current state of a feature
 
 `/resume` does not append to any `LOGS.md` — it's purely a read.
