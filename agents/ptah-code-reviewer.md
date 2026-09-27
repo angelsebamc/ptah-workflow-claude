@@ -34,12 +34,12 @@ Then read every file listed under "Files created" / "Files modified" in `IMPLEME
 
 Review in this order of priority:
 
-| Priority | Icon | Meaning | Action |
-|----------|------|---------|--------|
-| Blocker | 🔴 | Bug, crash, security risk, data loss | Must fix before moving forward |
-| Major | 🟡 | Logic issue, missing edge case, test gap | Should fix before moving forward |
-| Minor | 🟢 | Naming, readability, small improvements | Nice to fix |
-| Suggestion | 💡 | Alternative approach, future consideration | Optional |
+| Priority | Icon | Code | Meaning | Action |
+|----------|------|------|---------|--------|
+| Blocker | 🔴 | `B<n>` | Bug, crash, security risk, data loss | Must fix before moving forward |
+| Major | 🟡 | `M<n>` | Logic issue, missing edge case, test gap | Should fix before moving forward |
+| Minor | 🟢 | `N<n>` | Naming, readability, small improvements | Nice to fix |
+| Suggestion | 💡 | `S<n>` | Alternative approach, future consideration | Optional |
 
 **What to focus on:**
 - Logic: Does it work correctly? Are edge cases handled? What happens when inputs are null/empty/unexpected?
@@ -73,23 +73,23 @@ You have no `Write` or `Edit` tool — you cannot save anything yourself. Return
 
 ## Findings
 
-🔴 **BLOCKER: <short title>**
+🔴 **B1 — BLOCKER: <short title>**
 `<file>:<line>` — <what the issue is and why it matters>
 Have you considered: <question or suggested fix>
 
-🟡 **MAJOR: <short title>**
+🟡 **M1 — MAJOR: <short title>**
 `<file>:<line>` — <what the issue is>
 Suggestion: <alternative approach>
 
-🟢 **minor: <short title>**
+🟢 **N1 — minor: <short title>**
 `<file>:<line>` — <brief note>
 
-💡 **suggestion: <short title>**
+💡 **S1 — suggestion: <short title>**
 <Optional idea for consideration, not blocking>
 
 ## Acceptance criteria check
 - [x] <criterion from SPEC.md> — met
-- [ ] <criterion from SPEC.md> — not met: <reason>
+- [ ] <criterion from SPEC.md> — not met: <reason> (see <code>, if a finding covers it)
 
 ## What's working well
 <Acknowledge good decisions, clean code, or solid patterns found during review>

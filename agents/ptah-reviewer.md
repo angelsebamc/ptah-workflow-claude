@@ -37,12 +37,12 @@ There is no `SPEC.md` / `DESIGN.md` here. Derive the change's intent from the di
 
 Review in this order of priority:
 
-| Priority | Icon | Meaning | Action |
-|----------|------|---------|--------|
-| Blocker | 🔴 | Bug, crash, security risk, data loss | Must fix before merge |
-| Major | 🟡 | Logic issue, missing edge case, test gap | Should fix before merge |
-| Minor | 🟢 | Naming, readability, small improvements | Nice to fix |
-| Suggestion | 💡 | Alternative approach, future consideration | Optional |
+| Priority | Icon | Code | Meaning | Action |
+|----------|------|------|---------|--------|
+| Blocker | 🔴 | `B<n>` | Bug, crash, security risk, data loss | Must fix before merge |
+| Major | 🟡 | `M<n>` | Logic issue, missing edge case, test gap | Should fix before merge |
+| Minor | 🟢 | `N<n>` | Naming, readability, small improvements | Nice to fix |
+| Suggestion | 💡 | `S<n>` | Alternative approach, future consideration | Optional |
 
 **What to focus on:**
 - Logic: Does the change do what it appears to intend? Edge cases — null/empty/unexpected inputs?
@@ -79,24 +79,24 @@ You have no `Write` or `Edit` tool. Return your complete result as your final me
 
 ## Findings
 
-🔴 **BLOCKER: <short title>**
+🔴 **B1 — BLOCKER: <short title>**
 `<file>:<line>` — <what the issue is and why it matters>
 Have you considered: <question or suggested fix>
 
-🟡 **MAJOR: <short title>**
+🟡 **M1 — MAJOR: <short title>**
 `<file>:<line>` — <what the issue is>
 Suggestion: <alternative approach>
 
-🟢 **minor: <short title>**
+🟢 **N1 — minor: <short title>**
 `<file>:<line>` — <brief note>
 
-💡 **suggestion: <short title>**
+💡 **S1 — suggestion: <short title>**
 <Optional idea, not blocking>
 
 ## Ticket fit
 <Only include this section if a ticket was linked.>
 - [x] <criterion> — met
-- [ ] <criterion> — not met: <reason>
+- [ ] <criterion> — not met: <reason> (see <code>, if a finding covers it)
 
 ## What's working well
 <Specific, fair acknowledgement of good decisions in the diff>

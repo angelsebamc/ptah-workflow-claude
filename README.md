@@ -185,19 +185,13 @@ Reads `DESIGN.md`, checks the knowledge base, and implements the feature exactly
 #### `/code-review <n>`
 Reviews the implemented code against the spec and design. The actual review runs in an isolated subagent (`ptah-code-reviewer`) with a fresh context and read-only tools — it never sees this session's conversation, so it isn't anchored by the implementer's own reasoning. The subagent checks the knowledge base itself as part of its own reading. Documentation only — no code changes. Findings are prioritized as:
 
-| Icon | Level | Action |
-|------|-------|--------|
-| 🔴 | Blocker | Must fix before moving forward |
-| 🟡 | Major | Should fix before moving forward |
-| 🟢 | Minor | Nice to fix |
-| 💡 | Suggestion | Optional |
 
 **Produces:** `.claude/specs/ptah-<n>-<slug>/CODE-REVIEW.md`
 
 ---
 
-#### `/fix <n> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
-Reads `CODE-REVIEW.md`, checks the knowledge base, and applies fixes for all 🔴 blockers and 🟡 major issues. Supports three modes that control how much the agent asks before applying:
+#### `/fix <n | --review <name>> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
+Reads `CODE-REVIEW.md`, checks the knowledge base, and applies fixes for all 🔴 blockers and 🟡 major issues. With `--review <name>`, it fixes the latest pass of a standalone `/review` instead — only on the review's head branch. Supports three modes that control how much the agent asks before applying:
 
 | Mode | Behavior |
 |------|----------|
@@ -205,9 +199,11 @@ Reads `CODE-REVIEW.md`, checks the knowledge base, and applies fixes for all �
 | `plan` | Show a one-line-per-finding plan, wait for one confirmation, apply all in one pass. **Default.** |
 | `interactive` | Ask per finding before applying. User can skip individual findings. |
 
+In `plan` and `interactive`, reply by finding code to steer the run: give a different approach for a code, skip it, mark it already fixed, or pull in a 🟢/💡 finding that's out of scope. Codes you don't mention are applied as planned.
+
 Mode is resolved with precedence **flag > config > default (`plan`)**. The default mode can be set in `.claude/ptah/ptah.yml` under `commands.fix.mode`.
 
-Minors and suggestions are deferred by default. Pass `--include-minor` (or set `commands.fix.include_minor: true` in config) to include 🟢 minor issues in the run. 💡 suggestions are never auto-fixed.
+Minors and suggestions are deferred by default. Pass `--include-minor` (or set `commands.fix.include_minor: true` in config) to include 🟢 minor issues in the run. 💡 suggestions are only fixed when you name them by code.
 
 Regardless of mode, the **Stop and ask** rule from `RULES.md` still applies — `auto` does not bypass judgment for ambiguous fixes, design changes, or new dependencies.
 
@@ -337,7 +333,8 @@ When resuming after a break, run `/status` to see what's in flight, then `/resum
 - If `/design` produces open questions, resolve them before running `/implement`
 - `/code-review` is documentation only — it never touches code. The review itself runs in an isolated subagent with no memory of the `/implement` session, so it isn't swayed by the implementer's own reasoning — see "Why the review is isolated" in `RULES.md`
 - `/fix` defaults to `plan` mode — you see the full plan before any code is touched. Set `commands.fix.mode: auto` in `ptah.yml` if you'd rather have it just apply everything, or pass `--auto` on a per-run basis. Use `--interactive` when the review found something risky and you want to triage finding by finding.
-- `/fix` skips 🟢 minor issues by default — pass `--include-minor` or set `commands.fix.include_minor: true` to include them. 💡 suggestions are never auto-fixed.
+- `/fix` skips 🟢 minor issues by default — pass `--include-minor` or set `commands.fix.include_minor: true` to include them. 💡 suggestions are only fixed when you name them by code.
+- Answer the `/fix` plan by finding code instead of all-or-nothing — "B2: do X instead, skip M1" — rather than switching to `--interactive` just to skip one finding.
 - `/document` guards against incomplete work — it warns you if blockers are unresolved, and gives you one last chance to `/learn` anything worth keeping before the feature closes
 
 ### Knowledge base
