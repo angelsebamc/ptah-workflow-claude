@@ -196,8 +196,8 @@ Reviews the implemented code against the spec and design. The actual review runs
 
 ---
 
-#### `/fix <n | --review <name>> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
-Reads `CODE-REVIEW.md`, checks the knowledge base, and applies fixes for all 🔴 blockers and 🟡 major issues. With `--review <name>`, it fixes the latest pass of a standalone `/review` instead — only on the review's head branch. Supports three modes that control how much the agent asks before applying:
+#### `/fix <n> [--auto | --plan | --interactive] [--include-minor | --blockers-only]`
+Reads `CODE-REVIEW.md`, checks the knowledge base, and applies fixes for all 🔴 blockers and 🟡 major issues. Supports three modes that control how much the agent asks before applying:
 
 | Mode | Behavior |
 |------|----------|
