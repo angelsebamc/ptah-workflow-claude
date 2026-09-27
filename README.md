@@ -15,6 +15,61 @@ Ptah is a spec-driven workflow, using slash commands. Each command has a single 
 
 ---
 
+## Getting started
+
+Ptah ships as a flat repo; `install-ptah.sh` reshapes it into a target project's `.claude/` folder.
+
+### Prerequisites
+
+- `bash` (the installer is a bash script)
+- Python 3, stdlib only (for the knowledge base — `/learn` and `/recall`)
+- `jq` (to register the `/continue` hook — the installer still completes without it, but `/continue` won't work until it's registered)
+
+### Install
+
+Clone this repo, then run the installer against the project you want Ptah in:
+
+```bash
+git clone <this-repo> ptah-workflow-claude
+cd ptah-workflow-claude
+./install-ptah.sh --project-path /path/to/your-project
+```
+
+Run it from anywhere by pointing `--source-path` at the checkout instead:
+
+```bash
+./install-ptah.sh --project-path /path/to/your-project --source-path /path/to/ptah-workflow-claude
+```
+
+This copies commands to `.claude/commands/ptah/`, subagents to `.claude/agents/ptah/`, Ptah's own docs/config/knowledge base to `.claude/ptah/`, registers the `/continue` hook in `.claude/settings.local.json`, and merges a `## Ptah workflow` section into the project's `CLAUDE.md`. It also initializes `knowledge.db` if `python3` is on `PATH`. The install is idempotent — existing files are left alone unless you pass `--force`.
+
+### Options
+
+| Flag | Effect |
+|---|---|
+| `-p, --project-path PATH` | Project to install into. Default: current directory. |
+| `-s, --source-path PATH` | Path to the ptah-workflow-claude checkout. Default: the folder the script lives in. |
+| `-c, --create-config` | Also copy `ptah.example.yml` to `ptah.yml` so you can wire up JIRA/Linear/GitHub or set `/fix` defaults. |
+| `-f, --force` | Overwrite files that already exist at the destination, including replacing an existing `continue` matcher in `settings.local.json`. |
+
+The `/continue` hook is always wired up as part of install — no flag needed. It requires `jq`; if `jq` isn't on `PATH`, the rest of the install still completes and a warning tells you to install `jq` and re-run.
+
+A fully-loaded run:
+
+```bash
+./install-ptah.sh --project-path /path/to/your-project --create-config --force
+```
+
+### After installing
+
+1. Restart your Claude Code session so the new commands, subagents, and `CLAUDE.md` rules load.
+2. Run `/status` — it should say "No specs found."
+3. Run `/spec <your-first-feature>` to start the pipeline.
+4. Open the `/hooks` menu and confirm the `continue` matcher fires. (If `jq` was missing at install time, install it and re-run the installer first.)
+5. Try `/learn` to capture something, then `/recall` to look it up — confirms the knowledge base is wired up.
+
+---
+
 ## The workflow
 
 ```mermaid
@@ -26,9 +81,6 @@ flowchart LR
     Review -->|no issues| Document["/document<br/>README.md"]
     Fix --> Document
 ```
-
-`/learn` and `/recall` sit outside this pipeline — they're callable any time, from any command, on any feature. See **Knowledge base** below.
-
 ---
 
 ## Spec identifiers
@@ -268,10 +320,6 @@ The full schema — required fields per command, change entry format, and rules 
 The mid-session logging discipline (when to log, when not to) lives in `CLAUDE.md` under "Logging discipline".
 
 When resuming after a break, run `/status` to see what's in flight, then `/resume <n>` to load context for the one you want to continue.
-
----
-
-## Getting started
 
 ---
 
