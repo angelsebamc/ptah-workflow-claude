@@ -185,6 +185,12 @@ Reads `DESIGN.md`, checks the knowledge base, and implements the feature exactly
 #### `/code-review <n>`
 Reviews the implemented code against the spec and design. The actual review runs in an isolated subagent (`ptah-code-reviewer`) with a fresh context and read-only tools — it never sees this session's conversation, so it isn't anchored by the implementer's own reasoning. The subagent checks the knowledge base itself as part of its own reading. Documentation only — no code changes. Findings are prioritized as:
 
+| Icon | Code | Level | Action |
+|------|------|-------|--------|
+| 🔴 | `B1`, `B2`… | Blocker | Must fix before moving forward |
+| 🟡 | `M1`, `M2`… | Major | Should fix before moving forward |
+| 🟢 | `N1`, `N2`… | Minor | Nice to fix |
+| 💡 | `S1`, `S2`… | Suggestion | Optional |
 
 **Produces:** `.claude/specs/ptah-<n>-<slug>/CODE-REVIEW.md`
 
