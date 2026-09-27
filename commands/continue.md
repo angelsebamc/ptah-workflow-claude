@@ -4,7 +4,7 @@ Resume whatever you were last actively working on — no spec number required. `
 
 Like `/resume`, this is a meta-command: **read-only**. It does not run the next workflow command and does not append to `LOGS.md`.
 
-**This command depends on the `ptah-continue-resolve.sh` hook.** Unlike the rest of Ptah's config, there is no fallback if it isn't registered — register it by running `install-ptah.sh --register-continue-hook`. Without it, use `/resume <n>` or `/status` instead.
+**This command depends on the `ptah-continue-resolve.sh` hook.** Unlike the rest of Ptah's config, there is no fallback if it isn't registered. Without it, use `/resume <n>`.
 
 Use `/continue` when you don't remember (or don't care) which spec number you were on. Use `/resume <n>` directly when you want a *specific* spec, especially if more than one is in flight.
 
@@ -18,7 +18,7 @@ Check the current context for injected content starting with `Resolved /continue
 - **Present and says `none`** (hook ran but found no specs, or nothing in flight) → relay that message to the user verbatim and stop here.
 - **Absent entirely** → `/continue` can't tell *why*. The hook may not be installed, or it may be installed and failed silently — wrong matcher, timeout, or bad JSON output all fail open per Claude Code's hook docs, so nothing else would have surfaced the problem. Don't assert a cause. Stop and tell the user:
 
-  > "⚠️ No acceleration-hook resolution detected — `/continue` depends on it and has no fallback. If you've registered the hook, check `/hooks` in Claude Code to see if it's firing; otherwise re-run `install-ptah.sh --register-continue-hook` to set it up. `/resume <n>` or `/status` still work directly in the meantime."
+  > "⚠️ No acceleration-hook resolution detected — `/continue` depends on it and has no fallback. If you've registered the hook, check `/hooks` in Claude Code to see if it's firing; otherwise re-run `install-ptah.sh` (with `jq` on `PATH`) to register it. `/resume <n>` or `/status` still work directly in the meantime."
 
 ---
 
@@ -83,4 +83,4 @@ Use `/resume <n>` instead when more than one spec is in flight and you want a sp
 
 `/continue` does not append to any `LOGS.md` — it's purely a read, same as `/resume`.
 
-`/continue` is the one Ptah meta-command that requires setup beyond dropping in a file — install with `install-ptah.sh --register-continue-hook`.
+`/continue` is the one Ptah meta-command that requires setup beyond dropping in a file.

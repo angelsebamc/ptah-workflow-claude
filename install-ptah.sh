@@ -34,17 +34,12 @@ Options:
                              commands read for JIRA/Linear/GitHub wiring and /fix
                              defaults). Skipped by default since it's optional and
                              project-specific.
-  -r, --register-continue-hook
-                             Also wire the /continue UserPromptExpansion hook into
-                             .claude/settings.local.json. Merges into an existing
-                             "hooks" key and leaves every other key untouched.
-                             Requires jq.
   -f, --force                Overwrite files that already exist at the destination.
   -h, --help                 Show this help.
 
 Examples:
   ./install-ptah.sh -p ~/code/my-app
-  ./install-ptah.sh -p ~/code/my-app -c -r -f
+  ./install-ptah.sh -p ~/code/my-app -c -f
 EOF
 }
 
@@ -63,7 +58,6 @@ die()  { printf 'install-ptah.sh: %s\n' "$1" >&2; exit 1; }
 PROJECT_PATH=$PWD
 SOURCE_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CREATE_CONFIG=0
-REGISTER_HOOK=0
 FORCE=0
 
 while (( $# )); do
@@ -73,7 +67,6 @@ while (( $# )); do
     -s|--source-path)  [[ $# -ge 2 ]] || die "$1 needs a value"; SOURCE_PATH=$2; shift 2 ;;
     --source-path=*)   SOURCE_PATH=${1#*=}; shift ;;
     -c|--create-config) CREATE_CONFIG=1; shift ;;
-    -r|--register-continue-hook) REGISTER_HOOK=1; shift ;;
     -f|--force)        FORCE=1; shift ;;
     -h|--help)         usage; exit 0 ;;
     *) usage >&2; die "unknown option: $1" ;;
@@ -121,9 +114,13 @@ PROJECT_PATH=$(cd "$PROJECT_PATH" && pwd)
 SOURCE_PATH=$(cd "$SOURCE_PATH" && pwd)
 CLAUDE_DIR=$PROJECT_PATH/.claude
 
-# Fail before touching anything, rather than leaving a half-finished install.
-if (( REGISTER_HOOK )) && ! command -v jq >/dev/null 2>&1; then
-  die "--register-continue-hook needs jq to edit settings.local.json (the hook itself needs jq at runtime too). Install jq and re-run."
+# The /continue hook is registered unconditionally (step 5 below) but needs jq
+# to edit settings.local.json. Missing jq shouldn't abort the whole install -
+# everything else works fine without it - so just warn up front.
+HAVE_JQ=1
+if ! command -v jq >/dev/null 2>&1; then
+  HAVE_JQ=0
+  warn "jq not found on PATH - the /continue hook won't be registered in settings.local.json (the hook itself needs jq at runtime too). Install jq and re-run to wire it up."
 fi
 
 ok "Source: $SOURCE_PATH"
@@ -214,9 +211,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. (Optional) Register the /continue hook in .claude/settings.local.json
+# 5. Register the /continue hook in .claude/settings.local.json
 # ---------------------------------------------------------------------------
-if (( REGISTER_HOOK )); then
+if (( HAVE_JQ )); then
   step "Registering the /continue hook in .claude/settings.local.json"
 
   SETTINGS=$CLAUDE_DIR/settings.local.json
@@ -246,7 +243,7 @@ if (( REGISTER_HOOK )); then
 
   warn "Verify the matcher: open the /hooks menu in Claude Code after installing and confirm it fires on /continue. Adjust 'matcher' in settings.local.json if the menu shows a different name."
 else
-  skip "/continue hook not registered in settings.local.json (pass --register-continue-hook to wire it up; /continue has no fallback without it)"
+  skip "/continue hook not registered in settings.local.json (install jq and re-run; /continue has no fallback without it)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -294,9 +291,9 @@ echo "  3. Run /spec <your-first-feature> to start."
 if (( ! CREATE_CONFIG )); then
   echo "  4. (optional) Copy .claude/ptah/ptah.example.yml to ptah.yml to wire up JIRA/Linear/GitHub or set /fix defaults."
 fi
-if (( REGISTER_HOOK )); then
+if (( HAVE_JQ )); then
   echo "  5. Open the /hooks menu in Claude Code and confirm the 'continue' matcher actually fires."
 else
-  echo "  5. (optional) Re-run with --register-continue-hook if you want /continue to work without typing a spec number."
+  echo "  5. Install jq and re-run to register the /continue hook - it has no fallback without it."
 fi
 echo "  6. Try /learn to capture something, then /recall to look it up - confirms the knowledge base is wired up."
