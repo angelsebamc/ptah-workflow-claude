@@ -21,6 +21,8 @@ This applies before:
 
 If everything is clear, skip the clarifying step entirely and proceed.
 
+> **Note on delegated commands:** `/design` and `/implement` run their main work in a subagent, which can't talk to the user. The rule still applies — the subagent returns its questions instead of guessing, and the dispatching command asks them one at a time. See **Delegated work** below.
+
 > **Note on `/fix` modes:** `/fix` supports `auto`, `plan`, and `interactive` modes that control verbosity for routine fixes. The stop-and-ask rule applies in **all three** — if a fix is ambiguous, has side effects beyond scope, requires a design change, or introduces a new dependency, the agent stops and asks. `auto` mode does not suppress this rule.
 
 ---
@@ -42,20 +44,57 @@ Isolation also determines where the knowledge base gets consulted for reviews �
 
 ---
 
+## Delegated work
+
+`/design` and `/implement` are the two commands that read the most — a whole codebase to explore, or a whole design's worth of code to write — so they run that work in a subagent (`ptah-designer`, `ptah-implementer` — see `.claude/agents/ptah/`) and keep the main session as a thin dispatcher. The goal is a lean main context, not independent judgment (that's what the review subagents are for).
+
+They follow the same contract as the review subagents:
+
+- **The prompt is the folder path, nothing else.** The subagent reads `SPEC.md`, `DESIGN.md`, `LOGS.md`, `refs/`, `CLAUDE.md`, and `INDEX.md` itself. The dispatcher never summarizes the conversation or explains anything on the user's behalf.
+- **The subagent returns a result in the shared format** (see **Reports and vocabulary** below); **the dispatcher owns `LOGS.md` and the artifact.** `ptah-designer` returns `DESIGN.md` as text and never writes files. `ptah-implementer` writes code — that's its job — but returns `IMPLEMENTATION.md` as text and never touches `LOGS.md`.
+
+Subagents can't talk to the user, so **Stop and ask** becomes a loop:
+
+1. The subagent hits something it would normally ask about. It stops and returns its questions, each tagged with the change-entry type the answer would be (`decision`, `deviation`, `scope-change`) — result status `needs-input`.
+2. The dispatcher logs a `/<command> paused` command entry, then asks the questions one at a time.
+3. After each answer, the dispatcher appends a change entry recording it (`Trigger: user-request`, the tagged type, `What:` the answer as a one-line decision).
+4. The dispatcher re-dispatches with the same prompt — just the folder path. The subagent finds the answers in `LOGS.md`, where they belong anyway.
+
+Answers go through `LOGS.md` and never through the prompt, so a re-dispatch in a later session — after the main session ended mid-loop — works exactly the same way. And because the pause is a real command entry, `/status` and `/resume` show the spec as ⏸️ paused, with what it's blocked on.
+
+Subagents can't spawn subagents, so these stay dispatched from the main session only.
+
+---
+
 ## Knowledge discipline
 
 Ptah maintains a persistent, project-wide knowledge base — `.claude/ptah/knowledge/knowledge.db` (SQLite) plus its human-readable mirror `INDEX.md` — separate from any single spec's `LOGS.md`. It exists so a gotcha, convention, or dependency quirk discovered once doesn't have to be rediscovered on the next feature, or the one after that. Full schema and CLI contract: [`guides/knowledge-format.md`](./guides/knowledge-format.md).
 
 ### Capture is `/learn`-only
 
-Nothing gets written to `knowledge.db` automatically. Workflow commands never call `/learn` on their own behalf, even when they clearly just hit something learn-worthy — capturing is a judgment call the user makes explicitly, which keeps the knowledge base signal instead of noise. If a command notices something that looks worth keeping, it can *suggest* running `/learn` (see `/document`'s final step), but it never runs it unprompted.
+Nothing gets written to `knowledge.db` automatically. Workflow commands never call `/learn` on their own behalf, even when they clearly just hit something learn-worthy — capturing is a judgment call the user makes explicitly, which keeps the knowledge base signal instead of noise. If a command notices something that looks worth keeping, it can *suggest* running `/learn` (see **Suggest capture before hand-off** below), but it never runs it unprompted.
+
+### Suggest capture before hand-off
+
+`/design`, `/implement`, `/fix`, and `/document` each check, right before handing off, whether the work surfaced anything worth keeping in the knowledge base. The check has to happen before that context is gone:
+
+- `/design` and `/implement` do their main work in a subagent (see **Delegated work** above), whose context disappears the moment it returns. So the subagent hands back its candidates in a `### Learn candidates` section of its result, and the dispatching command asks the user about them.
+- `/fix` and `/document` run in the main session, so they look back over their own session.
+
+A candidate is anything that fits one of the seven categories in [`guides/knowledge-format.md`](./guides/knowledge-format.md) and holds beyond this one feature — non-obvious behavior that cost time to discover, a library or tool quirk, a convention that got settled. Facts specific to this feature aren't candidates; they belong in the spec's own artifacts. Skip anything already in `INDEX.md`.
+
+If there are candidates, ask one at a time:
+
+> "This surfaced `<brief description>`. Worth capturing with `/learn`?"
+
+If the user agrees, give them a pre-filled invocation to run — `/learn "<title>" --category <category> --source "/<command> <folder-name>"` — rather than running it yourself. The `--source` matters: by the time the user runs `/learn`, the command that found it has finished, so `/learn` can't infer where the finding came from on its own. If the user declines, or nothing qualifies, move on without comment. This check never blocks the hand-off.
 
 ### Consulting knowledge is automatic, and cheap by design
 
 Unlike capture, *consulting* the knowledge base is not optional — every workflow command checks it before doing its main work:
 
-- **Main-session commands** (`/design`, `/implement`, `/fix`, `/document`) read `.claude/ptah/knowledge/INDEX.md` directly, early in their own steps, the same way they already read `LOGS.md` first.
-- **Isolated review subagents** (`ptah-code-reviewer`, `ptah-reviewer`) read `INDEX.md` themselves, as part of their own Step 1 reading list — *not* something the dispatching `/code-review` or `/review` command passes in, since that would violate the isolation described above.
+- **Main-session commands** (`/fix`, `/document`) read `.claude/ptah/knowledge/INDEX.md` directly, early in their own steps, the same way they already read `LOGS.md` first.
+- **Subagents** (`ptah-designer`, `ptah-implementer`, `ptah-code-reviewer`, `ptah-reviewer`) read `INDEX.md` themselves, as part of their own Step 1 reading list — *not* something the dispatching command passes in, since that would violate the isolation described above and in **Delegated work** above.
 
 All of them read only `INDEX.md`, never `knowledge.db` directly — `INDEX.md` is titles, categories, tags, and confidence only, deliberately not full entry bodies, so the consult step stays a cheap scan rather than a token-expensive read. Only `/learn` and `/recall` invoke `ptah_knowledge.py` for the full entry, a search, or a graph traversal — and only when something on the index scan actually looked relevant.
 
@@ -77,15 +116,15 @@ While working on any spec, append **change entries** to the corresponding `LOGS.
 
 ### When to log
 
-Log automatically, without asking, on these events:
+Log automatically, without asking, on these events (the values are defined in [`guides/vocabulary.md`](./guides/vocabulary.md)):
 
 | Type | Trigger |
 |------|---------|
-| **Decision** | A choice was made that affects the work (library, pattern, structure, naming convention) |
-| **Deviation** | The implementation diverged from the spec or design |
-| **Scope change** | Something was added to, removed from, or moved out of scope mid-flow |
-| **Blocker** | Stopped to ask the user, or hit something that needs resolving |
-| **Correction** | The user pointed out something was wrong, and the agent is redoing it |
+| `decision` | A choice was made that affects the work (library, pattern, structure, naming convention), or the user answered a question |
+| `deviation` | The implementation diverged from the spec or design |
+| `scope-change` | Something was added to, removed from, or moved out of scope mid-flow |
+| `blocker` | Stopped to ask the user, or hit something that needs resolving — outside a subagent question loop, which logs a `paused` command entry instead |
+| `correction` | The user pointed out something was wrong, and the agent is redoing it |
 
 ### When NOT to log
 
@@ -100,8 +139,8 @@ Routine work creates noise — do not log it:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM:SS> — change during /<command>
-- Trigger: <user request | agent decision>
-- Type: <decision | deviation | scope change | blocker | correction>
+- Trigger: <user-request | agent-decision>
+- Type: <decision | deviation | scope-change | blocker | correction>
 - What: <one-line description>
 - Why: <reason>
 - Impact: <files, decisions, or downstream steps affected; or "none">
@@ -110,6 +149,19 @@ Routine work creates noise — do not log it:
 Append to the same `LOGS.md` as command entries, in chronological order. Change entries are the canonical record of mid-flow events — completion entries reference them ("Deviations: yes — see change entries above") rather than restating them.
 
 The full schema for both command and change entries lives in [`guides/logs-format.md`](./guides/logs-format.md).
+
+---
+
+## Reports and vocabulary
+
+Every fixed value in Ptah — command statuses, result statuses, spec states, change types and triggers, severities, verdicts, fix modes — is defined once, in [`guides/vocabulary.md`](./guides/vocabulary.md). Commands and subagents use those values exactly; a value that isn't on its list is an error, never something to coerce.
+
+Every final report follows [`guides/result-format.md`](./guides/result-format.md), in markdown:
+
+- **Subagent → dispatcher:** a `===RESULT===` block whose bullets are the `LOGS.md` fields for the entry it produces, then artifact blocks named after their files, then `===END===`. A result that breaks the format is malformed — the dispatcher logs `failed` and never guesses at or patches it.
+- **Command → user:** one hand-off shape for every command — status icon and line, artifact path, one to three key facts, and the next command.
+
+`LOGS.md` entries, results, and hand-offs share the same field names, so information moves between them by copying, not translating.
 
 ---
 
@@ -166,8 +218,8 @@ Two exceptions:
 | Location | Purpose |
 |----------|---------|
 | `.claude/commands/ptah/` | Slash command definitions |
-| `.claude/agents/ptah/` | Ptah's subagent definitions — isolated reviewers used by `/code-review` and `/review`. Mirrors `.claude/commands/ptah/`'s convention of namespacing under `ptah/`. See **Why the review is isolated** above |
-| `.claude/ptah/` | Ptah's config (`ptah.yml`) and reference docs (`guides/`, `RULES.md`) |
+| `.claude/agents/ptah/` | Ptah's subagent definitions — the designer and implementer used by `/design` and `/implement`, and the isolated reviewers used by `/code-review` and `/review`. Mirrors `.claude/commands/ptah/`'s convention of namespacing under `ptah/`. See **Delegated work** and **Why the review is isolated** above |
+| `.claude/ptah/` | Ptah's config (`ptah.yml`) and reference docs (`RULES.md`, and `guides/`: `vocabulary.md`, `result-format.md`, `logs-format.md`, `knowledge-format.md`) |
 | `.claude/ptah/knowledge/` | Ptah's persistent knowledge base — `knowledge.db` (SQLite, sole interface `ptah_knowledge.py`) + `INDEX.md` (auto-regenerated human-readable mirror). Project-wide, not per-spec. See **Knowledge discipline** above |
 | `.claude/specs/ptah-<n>-<slug>/` | Per-feature work product (created by `/spec`) — see **Spec identifiers** above |
 | `.claude/reviews/<review-name>/` | Per-review work product (created by `/review`), separate from the spec pipeline |

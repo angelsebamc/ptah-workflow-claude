@@ -12,6 +12,8 @@
 #   .claude/ptah/RULES.md                        <- RULES.md
 #   .claude/ptah/guides/logs-format.md           <- logs-format.md
 #   .claude/ptah/guides/knowledge-format.md      <- knowledge-format.md
+#   .claude/ptah/guides/vocabulary.md            <- vocabulary.md
+#   .claude/ptah/guides/result-format.md         <- result-format.md
 #   .claude/ptah/ptah_knowledge.py               <- ptah_knowledge.py
 #   .claude/ptah/ptah.example.yml                <- ptah_example.yml
 #   .claude/ptah/hooks/ptah-continue-resolve.sh  <- hooks/ptah-continue-resolve.sh
@@ -93,6 +95,8 @@ step "Validating source checkout at $SOURCE_PATH"
 
 REQUIRED_SOURCE_ITEMS=(
   commands
+  agents/ptah-designer.md
+  agents/ptah-implementer.md
   agents/ptah-code-reviewer.md
   agents/ptah-reviewer.md
   hooks/ptah-continue-resolve.sh
@@ -100,6 +104,8 @@ REQUIRED_SOURCE_ITEMS=(
   RULES.md
   logs-format.md
   knowledge-format.md
+  vocabulary.md
+  result-format.md
   ptah_knowledge.py
   ptah_example.yml
   CLAUDE-snippet.md
@@ -156,6 +162,8 @@ copy_ptah_file "$SOURCE_PATH/README.md"           "$PTAH_DIR/README.md"         
 copy_ptah_file "$SOURCE_PATH/RULES.md"            "$PTAH_DIR/RULES.md"                  || true
 copy_ptah_file "$SOURCE_PATH/logs-format.md"      "$PTAH_DIR/guides/logs-format.md"      || true
 copy_ptah_file "$SOURCE_PATH/knowledge-format.md" "$PTAH_DIR/guides/knowledge-format.md" || true
+copy_ptah_file "$SOURCE_PATH/vocabulary.md"       "$PTAH_DIR/guides/vocabulary.md"       || true
+copy_ptah_file "$SOURCE_PATH/result-format.md"    "$PTAH_DIR/guides/result-format.md"    || true
 copy_ptah_file "$SOURCE_PATH/ptah_knowledge.py"   "$PTAH_DIR/ptah_knowledge.py"          || true
 copy_ptah_file "$SOURCE_PATH/ptah_example.yml"    "$PTAH_DIR/ptah.example.yml"           || true
 

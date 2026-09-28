@@ -1,113 +1,132 @@
 # /implement
 
-Read the feature design and implement the code. Document what was built in IMPLEMENTATION.md.
+Implement a spec's design, and document what was built in `IMPLEMENTATION.md`.
 
-## Step 1 — Read the design
+`/implement` is a thin dispatcher: the implementation — reading the design, writing the code — happens in the `ptah-implementer` subagent's own context, so none of that code lands in the main session. This session only relays questions, writes `IMPLEMENTATION.md`, and logs. See **Delegated work** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md).
 
-When the user runs `/implement <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+## Step 1 — Resolve the spec
 
-Then read the following files:
+When the user runs `/implement <spec-id>`, resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
 
-- `.claude/specs/<feature-name>/DESIGN.md` — the technical design
-- `.claude/specs/<feature-name>/SPEC.md` — the use case and acceptance criteria
-- `.claude/specs/<feature-name>/refs/` — any referenced screenshots, mockups, or files
-- `.claude/specs/<feature-name>/LOGS.md` — session history, to understand current state
-- `CLAUDE.md` — project conventions, stack, architecture decisions
-
-If `DESIGN.md` is empty or missing, stop and tell the user:
+If `.claude/specs/<feature-name>/DESIGN.md` is empty or missing, stop and tell the user:
 
 > "⚠️ No design found for `<spec-id>`. Run `/design <spec-id>` first."
 
 ---
 
-## Step 2 — Consult prior knowledge
+## Step 2 — Dispatch to the implementer subagent
 
-Read `.claude/ptah/knowledge/INDEX.md` if it exists. Scan titles, categories, and tags for anything relevant — a `gotcha` about a library you're about to call, or a `convention` this codebase already settled on, is worth knowing before writing code around it rather than after.
-
-Cheap scan, not a search — move on if nothing looks relevant. If something does and you need the full writeup:
+Invoke the `ptah-implementer` subagent. Its prompt must contain **only**:
 
 ```
-python3 .claude/ptah/ptah_knowledge.py get <id>
+Implement the Ptah spec at .claude/specs/<feature-name>/
 ```
 
-If `INDEX.md` doesn't exist yet, skip silently.
-
-Per **Knowledge discipline** in `RULES.md`: don't cite this in `LOGS.md`. If a finding changes an implementation choice, log the decision itself — the knowledge entry is context, not part of the record.
+Nothing else — no summary of this conversation, no answers to earlier questions (those are in `LOGS.md`), no progress notes (the subagent finds them in `LOGS.md` and on disk). The subagent reads everything itself.
 
 ---
 
-## Step 3 — Clarify before implementing
+## Step 3 — Handle the result
 
-Apply the **Stop and ask** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md). Review the design; if anything is ambiguous, ask before writing code. If everything is clear, skip this step.
+Read the subagent's result per [`guides/result-format.md`](../../ptah/guides/result-format.md). Check it against every rule there before acting on it — a result that breaks any rule is **malformed** and handled like `error`, never guessed at or patched up.
 
----
+### `Status: needs-input`
 
-## Step 4 — Implement
+The subagent stopped partway and needs the user's input. Work it already finished is on disk. Per **Delegated work** in `RULES.md`:
 
-Implement the feature following the design exactly. Respect all project conventions from `CLAUDE.md`.
+1. Append a `paused` entry to `LOGS.md`, copying the result's fields verbatim:
+   ```markdown
+   ## <YYYY-MM-DD HH:MM:SS> — /implement paused
+   - Blocked on: <from result>
+   - Progress: <from result>
+   - Files touched: <from result>
+   - Next step: answer the open questions, then re-run /implement
+   ```
+   This entry is what lets the next dispatch pick up where this one stopped — including in a later session.
+2. Ask the `### Questions` **one at a time**, in the order returned. Present each in your own words if it reads better, but don't answer, soften, or drop any.
+3. After each answer, append a change entry recording it:
+   ```markdown
+   ## <YYYY-MM-DD HH:MM:SS> — change during /implement
+   - Trigger: user-request
+   - Type: <the question's tag: decision | deviation | scope-change>
+   - What: <the answer, as a one-line decision>
+   - Why: <the question it resolves>
+   - Impact: <what it changes — files, design sections, or "none">
+   ```
+   If an answer changes the design itself, update `DESIGN.md` to match before re-dispatching, and say so in `Impact:`.
+4. When every question is answered, go back to Step 2 and re-dispatch with the same prompt.
 
-- Follow the file structure defined in `DESIGN.md`
-- Implement all logic, validations, and edge cases described
-- Handle loading, empty, and error states for any UI
-- Do not introduce dependencies not listed in the design — if you need one, ask first
-- Do not deviate from the design without asking the user first
+If the user wants to stop before answering everything, skip to Step 5, then hand off as paused. The `paused` entry already written means `/implement <n>` picks up later, in any session.
 
----
+Keep any `### Learn candidates` from this round for Step 5.
 
-## Step 5 — Write IMPLEMENTATION.md
+### `Status: complete`
 
-After implementation is complete, write a summary to `.claude/specs/<feature-name>/IMPLEMENTATION.md`:
+Write the `===IMPLEMENTATION.md===` block verbatim to `.claude/specs/<feature-name>/IMPLEMENTATION.md`, then continue to Step 4.
+
+### `Status: error`, or a malformed result
+
+Write no artifact. Append a `failed` entry:
 
 ```markdown
-# IMPLEMENTATION — <feature-name>
-
-## Summary
-<Brief description of what was built>
-
-## Files created
-- `<path>` — <purpose>
-
-## Files modified
-- `<path>` — <what changed and why>
-
-## Deviations from design
-<Any changes made vs DESIGN.md, and the reason. "None" if everything matched.>
-
-## Known issues
-<Anything incomplete, hacky, or worth flagging for code review. "None" if clean.>
+## <YYYY-MM-DD HH:MM:SS> — /implement failed
+- Reason: <from result, or "malformed result — <what was wrong>">
+- Next step: check git status, then re-run /implement
 ```
+
+Skip to Step 5, then hand off as failed. Code may have changed on disk even though nothing was logged as built — the hand-off says so. If the result was malformed, offer to show the raw response.
 
 ---
 
-## Step 6 — Append to LOGS.md
+## Step 4 — Append to LOGS.md
 
-After writing IMPLEMENTATION.md, append the following entry to `.claude/specs/<feature-name>/LOGS.md`:
+Append the completion entry, copying the result's fields verbatim and adding `Next step:`:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM:SS> — /implement completed
-- Summary: <one-line summary of what was built>
-- Files created: <count>
-- Files modified: <count>
-- Deviations from design: <yes — brief note, or "no">
-- Known issues: <yes — brief note, or "no">
+- Summary: <from result>
+- Files created: <from result>
+- Files modified: <from result>
+- Deviations from design: <from result>
+- Known issues: <from result>
 - Next step: /code-review
 ```
 
-See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
+See [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
-## Step 7 — Hand off to user
+## Step 5 — Suggest capture before hand-off
 
-After writing both files, tell the user:
+Apply **Suggest capture before hand-off** from **Knowledge discipline** in `RULES.md` to the `### Learn candidates` from every round of this run, with duplicates merged. This runs whether the command completed, paused, or failed — a finding from a round that got stuck is still a finding.
 
-> "✅ Implementation is complete. Review the changes and `IMPLEMENTATION.md` at `.claude/specs/<feature-name>/IMPLEMENTATION.md`.
->
-> Pay attention to **Deviations from design** and **Known issues** if any.
->
-> When you're happy with it, run `/code-review <n>` to start the review."
+---
 
-Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
+## Step 6 — Hand off to user
+
+Use the hand-off format in [`guides/result-format.md`](../../ptah/guides/result-format.md):
+
+```
+✅ /implement <n> completed
+Artifact: `.claude/specs/<feature-name>/IMPLEMENTATION.md`
+<Summary> — <created> created, <modified> modified
+Deviations: <yes — see LOGS.md | none> · Known issues: <Known issues>
+Next: /code-review <n>
+```
+
+```
+⏸️ /implement <n> paused
+Blocked on: <Blocked on>
+Done so far: <Progress>
+Next: /implement <n> — answer the remaining questions
+```
+
+```
+❌ /implement <n> failed
+Reason: <Reason>
+Code may have changed on disk — check `git status` before re-running.
+Next: /implement <n>
+```
 
 ---
 

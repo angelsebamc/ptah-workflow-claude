@@ -210,13 +210,15 @@ See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-forma
 
 ## Step 7 — Hand off to user
 
-After writing both files, tell the user:
+After writing both files, hand off using the format in [`guides/result-format.md`](../../ptah/guides/result-format.md):
 
-> "✅ `SPEC.md` is ready. Review it at `.claude/specs/ptah-<n>-<slug>/SPEC.md` and add any files to `/refs` if needed.
->
-> When you're happy with it, run `/design <n>` to move to the design phase."
-
-Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
+```
+✅ /spec <n> completed
+Artifact: `.claude/specs/ptah-<n>-<slug>/SPEC.md`
+<count> acceptance criteria · source: <ticket-id, or "none">
+Add any screenshots, mockups, or schema snippets to `refs/` before designing.
+Next: /design <n>
+```
 
 ---
 

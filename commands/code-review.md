@@ -26,58 +26,62 @@ Nothing else. Do not add context from this conversation, summarize what happened
 
 ---
 
-## Step 3 — Write CODE-REVIEW.md
+## Step 3 — Handle the result
 
-The subagent returns a `===CODE-REVIEW.md===` block and a `===SUMMARY===` block (see `.claude/agents/ptah/ptah-code-reviewer.md` for the exact contract).
+Read the subagent's result per [`guides/result-format.md`](../../ptah/guides/result-format.md). Check it against every rule there before acting on it — a result that breaks any rule is **malformed** and handled like `error`, never guessed at or patched up.
 
-Write the `===CODE-REVIEW.md===` content verbatim to `.claude/specs/<feature-name>/CODE-REVIEW.md`.
-
-If the response doesn't match this shape — a block missing, malformed counts — don't guess or patch it up. Stop and tell the user:
-
-> "⚠️ The reviewer subagent returned something unexpected. Nothing was written. You can re-run `/code-review <spec-id>`, or I can show you the raw response."
+- **`Status: complete`** — write the `===CODE-REVIEW.md===` block verbatim to `.claude/specs/<feature-name>/CODE-REVIEW.md`, then continue to Step 4.
+- **`Status: error`, or a malformed result** — write no artifact. Append a `failed` entry, then skip to Step 5 and hand off as failed. If the result was malformed, offer to show the raw response.
+  ```markdown
+  ## <YYYY-MM-DD HH:MM:SS> — /code-review failed
+  - Reason: <from result, or "malformed result — <what was wrong>">
+  - Next step: re-run /code-review
+  ```
 
 ---
 
 ## Step 4 — Append to LOGS.md
 
-Using the counts from the `===SUMMARY===` block, append the following entry to `.claude/specs/<feature-name>/LOGS.md`:
+Append the completion entry, copying the result's fields verbatim and adding `Next step:` from the verdict:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM:SS> — /code-review completed
-- 🔴 Blockers: <blockers>
-- 🟡 Major: <major>
-- 🟢 Minor: <minor>
-- 💡 Suggestions: <suggestions>
-- Acceptance criteria: <criteria_met> of <criteria_total> met
+- 🔴 Blockers: <from result>
+- 🟡 Major: <from result>
+- 🟢 Minor: <from result>
+- 💡 Suggestions: <from result>
+- Acceptance criteria: <from result>
+- Verdict: <from result>
 - Next step: <see routing rule below>
 ```
 
-**`Next step:` routing rule.**
+**`Next step:` routing rule** — from the verdict, per [`guides/vocabulary.md`](../../ptah/guides/vocabulary.md):
 
-| Blockers/Major found? | `Next step:` value |
+| Verdict | `Next step:` |
 |---|---|
-| yes | `/fix` |
-| no | `/document` |
+| `fix-needed` | `/fix` |
+| `ready-to-document` | `/document` |
 
-See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
+See [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
 ## Step 5 — Hand off to user
 
-After writing both files, tell the user:
+Use the hand-off format in [`guides/result-format.md`](../../ptah/guides/result-format.md):
 
-> "✅ Code review complete. See `.claude/specs/<feature-name>/CODE-REVIEW.md`.
->
-> 🔴 Blockers: X | 🟡 Major: Y | 🟢 Minor: Z | 💡 Suggestions: W
->
-> When you're ready, run `/fix <n>` to address the issues."
+```
+✅ /code-review <n> completed
+Artifact: `.claude/specs/<feature-name>/CODE-REVIEW.md`
+🔴 <blockers> | 🟡 <major> | 🟢 <minor> | 💡 <suggestions> — acceptance criteria <x> of <y> met
+Next: /fix <n>          (or "/document <n> — no blockers or major issues, /fix can be skipped")
+```
 
-If there are zero blockers and zero major issues:
-
-> "✅ Code review complete — no blockers or major issues found. You can skip `/fix` and run `/document <n>` directly."
-
-Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
+```
+❌ /code-review <n> failed
+Reason: <Reason>
+Next: /code-review <n>
+```
 
 ---
 

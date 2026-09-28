@@ -1,116 +1,127 @@
 # /design
 
-Read the feature spec and produce a thorough technical design before any code is written.
+Produce a thorough technical design for a spec before any code is written.
 
-## Step 1 — Read the spec
+`/design` is a thin dispatcher: the design work — reading the spec, exploring the codebase, writing the design — happens in the `ptah-designer` subagent's own context, so none of that reading lands in the main session. This session only relays questions, writes `DESIGN.md`, and logs. See **Delegated work** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md).
 
-When the user runs `/design <spec-id>`, first resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
+## Step 1 — Resolve the spec
 
-Then read the following files:
+When the user runs `/design <spec-id>`, resolve `<spec-id>` to a spec folder per **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — it may be a bare number, `ptah-<n>`, or a full folder name. The rest of this file uses `<feature-name>` to mean that resolved folder.
 
-- `.claude/specs/<feature-name>/SPEC.md` — the use case and acceptance criteria
-- `.claude/specs/<feature-name>/refs/` — any referenced screenshots, mockups, or files
-- `CLAUDE.md` — project conventions, stack, architecture decisions
+If `.claude/specs/<feature-name>/SPEC.md` is empty or missing, stop and tell the user:
 
-If `SPEC.md` is empty or missing, stop and tell the user:
-
-> "⚠️ No design found for `<spec-id>`. Run `/spec <feature-name>` first."
+> "⚠️ No spec found for `<spec-id>`. Run `/spec <feature-name>` first."
 
 ---
 
-## Step 2 — Consult prior knowledge
+## Step 2 — Dispatch to the designer subagent
 
-Read `.claude/ptah/knowledge/INDEX.md` if it exists. Scan titles, categories, and tags for anything relevant to this feature — an `architecture` or `dependency` entry touching the same area is worth knowing before designing, not after implementing around it.
-
-This is a cheap scan, not a search — if nothing looks relevant, move on. If something does and you need the full detail:
+Invoke the `ptah-designer` subagent. Its prompt must contain **only**:
 
 ```
-python3 .claude/ptah/ptah_knowledge.py get <id>
+Design the Ptah spec at .claude/specs/<feature-name>/
 ```
 
-If `INDEX.md` doesn't exist yet, skip silently — expected on a fresh project, not an error.
-
-Per **Knowledge discipline** in `RULES.md`: don't cite this in `LOGS.md`. If a finding changes a design decision, log the decision itself as usual — the knowledge entry is context that informed it, not part of the record.
+Nothing else — no summary of this conversation, no answers to earlier questions (those are in `LOGS.md`), no hints about the codebase. The subagent reads everything itself.
 
 ---
 
-## Step 3 — Clarify before designing
+## Step 3 — Handle the result
 
-Apply the **Stop and ask** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md). Review the spec, refs, and anything surfaced in Step 2; if anything is ambiguous, ask before designing. If everything is clear, skip this step.
+Read the subagent's result per [`guides/result-format.md`](../../ptah/guides/result-format.md). Check it against every rule there before acting on it — a result that breaks any rule is **malformed** and handled like `error`, never guessed at or patched up.
 
----
+### `Status: needs-input`
 
-## Step 4 — Write DESIGN.md
+The subagent needs the user's input before it can design. Per **Delegated work** in `RULES.md`:
 
-Produce a thorough technical design and write it to `.claude/specs/<feature-name>/DESIGN.md`.
+1. Append a `paused` entry to `LOGS.md`, copying the result's fields verbatim:
+   ```markdown
+   ## <YYYY-MM-DD HH:MM:SS> — /design paused
+   - Blocked on: <from result>
+   - Progress: <from result>
+   - Files touched: <from result>
+   - Next step: answer the open questions, then re-run /design
+   ```
+2. Ask the `### Questions` **one at a time**, in the order returned. Present each in your own words if it reads better, but don't answer, soften, or drop any.
+3. After each answer, append a change entry recording it:
+   ```markdown
+   ## <YYYY-MM-DD HH:MM:SS> — change during /design
+   - Trigger: user-request
+   - Type: <the question's tag: decision | scope-change>
+   - What: <the answer, as a one-line decision>
+   - Why: <the question it resolves>
+   - Impact: input to DESIGN.md
+   ```
+4. When every question is answered, go back to Step 2 and re-dispatch with the same prompt.
 
-The design must cover every aspect an agent needs to implement the feature without ambiguity. Use the following structure:
+If the user wants to stop before answering everything, skip to Step 5, then hand off as paused. The `paused` entry already written means `/design <n>` picks up from the answered questions later, in any session.
+
+Keep any `### Learn candidates` from this round for Step 5.
+
+### `Status: complete`
+
+Write the `===DESIGN.md===` block verbatim to `.claude/specs/<feature-name>/DESIGN.md`, then continue to Step 4.
+
+### `Status: error`, or a malformed result
+
+Write no artifact. Append a `failed` entry:
 
 ```markdown
-# DESIGN — <feature-name>
-
-## Overview
-<Brief summary of the technical approach>
-
-## Architecture
-<How this feature fits into the existing codebase — which layers are touched, 
-which existing modules are reused or extended>
-
-## Data model
-<Any new or modified data structures, database tables, types, schemas>
-
-## API / interfaces
-<New endpoints, edge functions, hooks, or service methods needed.
-Include input/output shapes>
-
-## UI / screens
-<Screens or components affected. Describe layout, interactions, states 
-(loading, empty, error, success)>
-
-## File structure
-<New files to create and existing files to modify, with their purpose>
-
-## Logic & business rules
-<Key logic, validations, edge cases, and error handling to implement>
-
-## Dependencies
-<Any new packages, APIs, or services required>
-
-## Open questions
-<Anything unclear that the user should decide before implementation starts>
+## <YYYY-MM-DD HH:MM:SS> — /design failed
+- Reason: <from result, or "malformed result — <what was wrong>">
+- Next step: re-run /design
 ```
 
-Only include sections that are relevant — skip sections that don't apply to this feature.
+Skip to Step 5, then hand off as failed. If the result was malformed, offer to show the raw response.
 
 ---
 
-## Step 5 — Append to LOGS.md
+## Step 4 — Append to LOGS.md
 
-After writing DESIGN.md, append the following entry to `.claude/specs/<feature-name>/LOGS.md`:
+Append the completion entry, copying the result's fields verbatim and adding `Next step:`:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM:SS> — /design completed
-- Approach: <one-line summary of the technical approach>
-- Key decisions: <any notable design choices or tradeoffs>
-- Open questions: <number of open questions, or "none">
+- Approach: <from result>
+- Key decisions: <from result>
+- Open questions: <from result>
 - Next step: /implement
 ```
 
-See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
+See [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
+
+---
+
+## Step 5 — Suggest capture before hand-off
+
+Apply **Suggest capture before hand-off** from **Knowledge discipline** in `RULES.md` to the `### Learn candidates` from every round of this run, with duplicates merged. This runs whether the command completed, paused, or failed — a finding from a round that got stuck is still a finding.
 
 ---
 
 ## Step 6 — Hand off to user
 
-After writing both files, tell the user:
+Use the hand-off format in [`guides/result-format.md`](../../ptah/guides/result-format.md):
 
-> "✅ `DESIGN.md` is ready. Review it at `.claude/specs/<feature-name>/DESIGN.md`.
->
-> Pay special attention to **Open questions** — resolve any before moving forward.
->
-> When you're happy with it, run `/implement <n>` to start implementation."
+```
+✅ /design <n> completed
+Artifact: `.claude/specs/<feature-name>/DESIGN.md`
+<Approach, in one line>
+Open questions: <count> — resolve them before implementing   (omit if none)
+Next: /implement <n>
+```
 
-Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
+```
+⏸️ /design <n> paused
+Blocked on: <Blocked on>
+<count> question(s) still unanswered
+Next: /design <n> — answer the remaining questions
+```
+
+```
+❌ /design <n> failed
+Reason: <Reason>
+Next: /design <n>
+```
 
 ---
 
