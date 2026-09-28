@@ -92,57 +92,81 @@ The subagent reads `diff.patch`, `CLAUDE.md`, and `ticket.md` itself. Don't summ
 
 ---
 
-## Step 5 — Write REVIEW.md
+## Step 5 — Handle the result
 
-The subagent returns a `===REVIEW-PASS===` block and a `===SUMMARY===` block (see `.claude/agents/ptah/ptah-reviewer.md` for the exact contract).
+Read the subagent's result per [`guides/result-format.md`](../../ptah/guides/result-format.md). Check it against every rule there before acting on it — a result that breaks any rule is **malformed** and handled like `error`, never guessed at or patched up.
+
+### `Status: complete`
+
+The `===REVIEW.md===` block is one review pass.
 
 - **First pass:** write
   ```markdown
   # REVIEW — <review-name>
 
-  <===REVIEW-PASS=== content, verbatim>
+  <===REVIEW.md=== content, verbatim>
   ```
-- **Re-review (pass 2+):** append a blank line, then the `===REVIEW-PASS===` content, verbatim, to the existing file. Never overwrite prior passes.
+- **Re-review (pass 2+):** append a blank line, then the `===REVIEW.md===` content, verbatim, to the existing file. Never overwrite prior passes.
 
-If the response doesn't match this shape, don't guess — stop and tell the user:
+Then continue to Step 6.
 
-> "⚠️ The reviewer subagent returned something unexpected. Nothing was written. You can re-run `/review`, or I can show you the raw response."
+### `Status: error`, or a malformed result
+
+Write nothing to `REVIEW.md`. Append a `failed` entry to `.claude/reviews/<review-name>/LOGS.md`, then skip to Step 7 and hand off as failed. If the result was malformed, offer to show the raw response.
+
+```markdown
+## <YYYY-MM-DD HH:MM:SS> — /review failed (pass <N>)
+- Reason: <from result, or "malformed result — <what was wrong>">
+- Next step: re-run /review
+```
 
 ---
 
 ## Step 6 — Append to LOGS.md
 
-Using the counts from `===SUMMARY===`, append an entry to `.claude/reviews/<review-name>/LOGS.md`:
+Append the completion entry to `.claude/reviews/<review-name>/LOGS.md` — the fields you own first, then the result's fields verbatim:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM:SS> — /review completed (pass <N>)
 - Target: <target>
 - Base: <base-branch> @ <short-sha>
 - Source: <ticket-id, or "none">
-- 🔴 Blockers: <blockers>
-- 🟡 Major: <major>
-- 🟢 Minor: <minor>
-- 💡 Suggestions: <suggestions>
-- Verdict: <verdict>
-- Next step: <handoff line — see Step 7>
+- 🔴 Blockers: <from result>
+- 🟡 Major: <from result>
+- 🟢 Minor: <from result>
+- 💡 Suggestions: <from result>
+- Verdict: <from result>
+- Next step: <see Step 7>
 ```
 
-This is a separate `LOGS.md` from any spec folder — it journals the review, not a feature. Re-reviews append additional `pass <N>` entries here, so the file shows the full review history as the author iterates.
+This is a separate `LOGS.md` from any spec folder — it journals the review, not a feature. Re-reviews append additional `pass <N>` entries here, so the file shows the full review history as the author iterates. See [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
 
 ---
 
 ## Step 7 — Hand off to user
 
-Report the result and the path:
+Use the hand-off format in [`guides/result-format.md`](../../ptah/guides/result-format.md), with the review name in place of a spec number:
 
-> "✅ Review complete — `.claude/reviews/<review-name>/REVIEW.md`
->
-> 🔴 Blockers: X | 🟡 Major: Y | 🟢 Minor: Z | 💡 Suggestions: W
-> Verdict: <verdict>"
+```
+✅ /review <review-name> completed (pass <N>)
+Artifact: `.claude/reviews/<review-name>/REVIEW.md`
+🔴 <blockers> | 🟡 <major> | 🟢 <minor> | 💡 <suggestions> — verdict: <verdict>
+Next: <see below>
+```
 
-**Optional `/fix` handoff.** Only mention this when there are in-scope findings (blockers or major) **and** the reviewer is on a branch they can modify — fixing someone else's PR is the author's job by default, not the reviewer's. When it applies:
+```
+❌ /review <review-name> failed (pass <N>)
+Reason: <Reason>
+Next: re-run /review
+```
 
-> "If this is your branch to modify, you can apply the blocker/major fixes with `/fix --review <review-name>`. Otherwise, share `REVIEW.md` with the author."
+**`Next:` for a completed review**, from the verdict:
+
+- `request-changes` — "share `REVIEW.md` with the author". Add the optional `/fix` hand-off **only** if the reviewer is on a branch they can modify — fixing someone else's PR is the author's job by default: "or, if this branch is yours to modify, `/fix --review <review-name>`".
+- `approve-with-minors` — "share `REVIEW.md` with the author; safe to merge at their discretion".
+- `approve` — "safe to merge".
+
+Use the same text for `Next step:` in Step 6.
 
 Do **not** auto-run `/fix`. `/review` is read-only on the codebase.
 

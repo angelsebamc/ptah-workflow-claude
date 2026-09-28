@@ -24,6 +24,7 @@ Do not attempt to capture the diff yourself — you have no `Bash` tool and no g
 
 Read, in this order:
 
+- `.claude/ptah/guides/result-format.md` and `.claude/ptah/guides/vocabulary.md` — the exact shape and values of what you return
 - `.claude/reviews/<review-name>/diff.patch` — the diff under review
 - `CLAUDE.md` (project root) — project conventions, stack, patterns
 - `.claude/reviews/<review-name>/ticket.md`, if a ticket was linked
@@ -35,7 +36,7 @@ There is no `SPEC.md` / `DESIGN.md` here. Derive the change's intent from the di
 
 ## Step 2 — Review
 
-Review in this order of priority:
+Review in this order of priority (severities and finding codes are defined in `vocabulary.md`):
 
 | Priority | Icon | Code | Meaning | Action |
 |----------|------|------|---------|--------|
@@ -65,10 +66,17 @@ Review in this order of priority:
 
 ## Step 3 — Return your findings
 
-You have no `Write` or `Edit` tool. Return your complete result as your final message, in exactly this shape and nothing else:
+You have no `Write` or `Edit` tool. Return your complete result as your final message, following every rule in `result-format.md`:
 
-```
-===REVIEW-PASS===
+````
+===RESULT===
+- Status: complete
+- 🔴 Blockers: <count>
+- 🟡 Major: <count>
+- 🟢 Minor: <count>
+- 💡 Suggestions: <count>
+- Verdict: <request-changes | approve-with-minors | approve>
+===REVIEW.md===
 > **Target:** `<target>` (<head-branch> @ <short-sha>)
 > **Base:** `<base-branch> @ <short-sha>`
 > **Source:** [<ticket-id>](<url>) — <title>   (omit this line entirely if no ticket)
@@ -102,13 +110,23 @@ Suggestion: <alternative approach>
 <Specific, fair acknowledgement of good decisions in the diff>
 
 ## Verdict
-<"Request changes — X blockers, Y major issues" | "Approve with minors — no blockers or major issues" | "Approve — clean">
-===SUMMARY===
-blockers: <count>
-major: <count>
-minor: <count>
-suggestions: <count>
-verdict: <request-changes | approve-with-minors | approve>
-```
+<`request-changes` — X blockers, Y major issues | `approve-with-minors` — no blockers or major issues | `approve` — clean>
+===END===
+````
 
-Nothing before the first block, nothing after the last one. The parent session assembles `REVIEW.md` and the `LOGS.md` entry from exactly what you return here.
+Number each severity's findings from 1 within this pass, in the order they appear (`B1`, `B2`, … `M1`, …). `/fix --review` and the author refer to findings by these codes, so every finding gets exactly one.
+
+`Verdict` is `request-changes` if there's at least one blocker or major finding, `approve-with-minors` if there are only minors or suggestions, `approve` if there are none. The counts must match the findings exactly.
+
+The `===REVIEW.md===` block is one review pass — the parent session writes it as the file on the first pass and appends it on re-reviews.
+
+If you can't review at all — `diff.patch` missing or empty — return:
+
+````
+===RESULT===
+- Status: error
+- Reason: <one line>
+===END===
+````
+
+The parent session assembles `REVIEW.md` and the `LOGS.md` entry from exactly what you return.

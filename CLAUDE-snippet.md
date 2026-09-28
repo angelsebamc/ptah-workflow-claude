@@ -13,7 +13,8 @@ Ptah also maintains a persistent, project-wide knowledge base at `.claude/ptah/k
 
 Meta-commands help with session continuity:
 - `/status` lists in-flight specs
-- `/resume <n>` reloads the full working context (project rules, session history, and every relevant artifact) so the agent can continue work from a previous session as if it had never stopped
+- `/resume <n>` reads a spec's `LOGS.md` and reports where the work stands and what to run next; the next command loads its own artifacts
+- `/continue` does the same for the most recently active spec, no number needed
 ```
 
 That's it — one block in `CLAUDE.md`, full rules live in `RULES.md`.

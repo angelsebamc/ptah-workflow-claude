@@ -82,27 +82,30 @@ See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-forma
 
 ## Step 4 — Capture any final knowledge
 
-Before handing off, check whether anything from this feature is worth capturing permanently in the knowledge base. Look specifically at:
+Apply **Suggest capture before hand-off** from **Knowledge discipline** in `RULES.md` for anything this session surfaced.
+
+`/document` also sweeps the written record, since it's the one command that sees the whole feature — review findings in particular never lived in a main-session context, so no earlier check could have caught them. Look specifically at:
 
 - `CODE-REVIEW.md` findings — a 🔴/🟡 finding often *is* a `gotcha` or `security` entry, already written down but never promoted
 - `LOGS.md` change entries — a **decision** or **deviation** logged mid-flow (a library swap, a naming convention, a workaround) is often exactly the kind of thing worth keeping past this one feature
 - Anything in **Known issues** (`IMPLEMENTATION.md`) or **Deferred items** (this file's `README.md`) that's a project-wide fact rather than something specific to this feature
 
-If something looks worth keeping, ask the user, one at a time if there's more than one candidate:
+Merge candidates from the session and the sweep into one list, then ask one at a time, the same way the rule describes:
 
 > "This feature surfaced `<brief description>`. Worth capturing with `/learn` before we close it out?"
-
-Do **not** run `/learn` automatically, even if the answer seems obvious — capture is always an explicit, user-confirmed action; see **Knowledge discipline** in `RULES.md`. If the user declines, or nothing looks notable, move on without further comment. This step never blocks the hand-off in Step 5 — it's a suggestion, not a gate.
 
 ---
 
 ## Step 5 — Hand off to user
 
-> "✅ Feature documented.
->
-> - Summary: `.claude/specs/<feature-name>/README.md`
->
-> The full workflow for `<feature-name>` is complete. 🎉"
+Use the hand-off format in [`guides/result-format.md`](../../ptah/guides/result-format.md):
+
+```
+✅ /document <n> completed
+Artifact: `.claude/specs/<feature-name>/README.md`
+Deferred items: <count, or "none"> — the full workflow is complete 🎉
+Next: none — workflow complete
+```
 
 ---
 

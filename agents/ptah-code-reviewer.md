@@ -17,6 +17,7 @@ Your prompt will contain a resolved spec folder path, e.g. `.claude/specs/ptah-7
 
 Read, in this order:
 
+- `.claude/ptah/guides/result-format.md` and `.claude/ptah/guides/vocabulary.md` — the exact shape and values of what you return
 - `<folder>/SPEC.md` — acceptance criteria to verify against
 - `<folder>/DESIGN.md` — intended technical design
 - `<folder>/IMPLEMENTATION.md` — what the implementer says was built
@@ -32,7 +33,7 @@ Then read every file listed under "Files created" / "Files modified" in `IMPLEME
 
 ## Step 2 — Review
 
-Review in this order of priority:
+Review in this order of priority (severities and finding codes are defined in `vocabulary.md`):
 
 | Priority | Icon | Code | Meaning | Action |
 |----------|------|------|---------|--------|
@@ -62,9 +63,17 @@ Review in this order of priority:
 
 ## Step 3 — Return your findings
 
-You have no `Write` or `Edit` tool — you cannot save anything yourself. Return your complete result as your final message, in exactly this shape and nothing else:
+You have no `Write` or `Edit` tool — you cannot save anything yourself. Return your complete result as your final message, following every rule in `result-format.md`:
 
-```
+````
+===RESULT===
+- Status: complete
+- 🔴 Blockers: <count>
+- 🟡 Major: <count>
+- 🟢 Minor: <count>
+- 💡 Suggestions: <count>
+- Acceptance criteria: <x> of <y> met
+- Verdict: <fix-needed | ready-to-document>
 ===CODE-REVIEW.md===
 # CODE-REVIEW — <feature-name>
 
@@ -95,14 +104,21 @@ Suggestion: <alternative approach>
 <Acknowledge good decisions, clean code, or solid patterns found during review>
 
 ## Verdict
-<"Ready for /fix — X blockers, Y major issues" or "No issues found — skip /fix and run /document directly">
-===SUMMARY===
-blockers: <count>
-major: <count>
-minor: <count>
-suggestions: <count>
-criteria_met: <x>
-criteria_total: <y>
-```
+<`fix-needed` — X blockers, Y major issues | `ready-to-document` — no blockers or major issues>
+===END===
+````
 
-Nothing before the first block, nothing after the last one — no preamble, no sign-off. The parent session writes `CODE-REVIEW.md` and the `LOGS.md` entry from exactly what you return here.
+Number each severity's findings from 1, in the order they appear (`B1`, `B2`, … `M1`, …). `/fix` and the user refer to findings by these codes, so every finding gets exactly one, and a code is never reused within a review.
+
+`Verdict` is `fix-needed` if there's at least one blocker or major finding, `ready-to-document` otherwise. The counts must match the findings in `CODE-REVIEW.md` exactly.
+
+If you can't review at all — `SPEC.md`, `DESIGN.md`, or `IMPLEMENTATION.md` missing or empty, or a listed file that doesn't exist — return:
+
+````
+===RESULT===
+- Status: error
+- Reason: <one line>
+===END===
+````
+
+The parent session writes `CODE-REVIEW.md` and the `LOGS.md` entry from exactly what you return.

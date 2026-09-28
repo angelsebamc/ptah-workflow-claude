@@ -21,24 +21,26 @@ If the folder doesn't exist or is empty, tell the user:
 
 ## Step 2 — Determine state for each spec
 
-For each `LOGS.md`, read the **last entry** to determine state.
+For each `LOGS.md`, find the **last command entry** — the last heading of the form `## <YYYY-MM-DD HH:MM:SS> — /<command> <status>`. Skip change entries (`— change during /<command>`) when looking for it: they record what happened mid-flow, not where the spec stands.
 
 ### State derivation rules
 
-Look at the heading of the last entry — `## <YYYY-MM-DD HH:MM:SS> — /<command> <status>`.
+Spec states are defined in [`guides/vocabulary.md`](../../ptah/guides/vocabulary.md):
 
-| Last entry heading | State | Icon |
+| Last command entry | State | Icon |
 |---|---|---|
-| `/document completed` | **Completed** | ✅ |
-| `/<anything> paused` | **Paused** | ⏸️ |
-| Any other `completed` | **Active** | 🔄 |
-| No entries / empty file | **Just started** | 🆕 |
+| `/document completed` | `completed` | ✅ |
+| any `paused` | `paused` | ⏸️ |
+| any `failed` | `failed` | ❌ |
+| any other `completed` | `active` | 🔄 |
+| none (empty file, or only change entries) | `just-started` | 🆕 |
 
-For active and paused entries, also extract the `Next step:` field from the last entry — it tells the user what command to run next.
+From the last command entry, also extract:
 
-For paused entries, also extract `Blocked on:` — that's what the user needs to resolve.
-
-For completed entries with `--all`, no extra info needed beyond the date.
+- **`active`** — `Next step:`
+- **`paused`** — `Blocked on:` and `Next step:`. If change entries follow it, count them: those are questions already answered.
+- **`failed`** — `Reason:`
+- **`completed`** (with `--all`) — just the date
 
 ---
 
@@ -56,16 +58,20 @@ If after filtering nothing remains, tell the user:
 
 ## Step 4 — Print the report
 
-Group by state in this order: **paused → active → just started → completed** (completed only appears with `--all`). Within each group, sort ascending by spec number.
+Group by state in this order: **failed → paused → active → just started → completed** (completed only appears with `--all`). Within each group, sort ascending by spec number.
 
 Use this exact format — the identifier column shows the **full spec name** (`ptah-<n>-<slug>`), so the report reads as a scannable overview rather than a bare list of numbers. The `next:` line still uses the bare number, since that's what you'd actually type to run it.
 
 ```
 📋 Status
 
+  ❌ ptah-5-csv-import           failed at /<command>
+                                 reason: <one-line summary>
+                                 next: /<command> 5
   ⏸️ ptah-4-dark-mode            paused at /<command>
-                                 blocked on: <one-line summary>
-  🔄 ptah-7-user-login           last: /<command> <status>
+                                 blocked on: <one-line summary> (<k> answered so far)
+                                 next: /<command> 4
+  🔄 ptah-7-user-login           last: /<command> completed
                                  next: /<next-command> 7
   🆕 ptah-9-export-csv           just started, no commands run yet
 
@@ -73,7 +79,9 @@ Use this exact format — the identifier column shows the **full spec name** (`p
   ✅ ptah-2-onboarding-flow      completed YYYY-MM-DD
 ```
 
-Include the spec number (not the full name) in the `next:` line so it's directly runnable (e.g. `next: /fix 7`). Left-align the identifier column, padding to the longest name in the list so the status text lines up. Keep the icon column consistent (one space after the icon, then the identifier). Truncate `blocked on:` to one line — full detail is in `LOGS.md`.
+Include the spec number (not the full name) in the `next:` line so it's directly runnable (e.g. `next: /fix 7`). For `paused` and `failed`, the next command is the one that paused or failed — re-running it picks up from `LOGS.md`. Omit `(<k> answered so far)` when no answers have been logged yet.
+
+Left-align the identifier column, padding to the longest name in the list so the status text lines up. Keep the icon column consistent (one space after the icon, then the identifier). Truncate `blocked on:` and `reason:` to one line — full detail is in `LOGS.md`.
 
 Legacy specs without a `ptah-<n>` folder name are listed the same way, using their full folder name as-is.
 

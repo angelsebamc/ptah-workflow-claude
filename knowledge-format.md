@@ -124,4 +124,4 @@ Invalid category, confidence, relation, or a `--relates-to` target that doesn't 
 
 Regenerated in full on every `add` — never hand-edited, never diffed against a previous version, just overwritten. One table per category (categories with zero entries are omitted), columns: ID, Title (with `→ <id>` suffixes for outgoing edges), Tags, Confidence. Full `body` text is never in `INDEX.md` — that's what `get` / `/recall <id>` is for.
 
-This is the only file the main-session workflow commands (`/design`, `/implement`, `/fix`, `/document`) read when consulting prior knowledge, and the only one the isolated review subagents (`ptah-code-reviewer`, `ptah-reviewer`) read too — see "Knowledge discipline" in `RULES.md`. None of them query `knowledge.db` directly.
+This is the only file the main-session workflow commands (`/fix`, `/document`) read when consulting prior knowledge, and the only one the subagents (`ptah-designer`, `ptah-implementer`, `ptah-code-reviewer`, `ptah-reviewer`) read too — see "Knowledge discipline" in `RULES.md`. None of them query `knowledge.db` directly.

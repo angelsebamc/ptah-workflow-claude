@@ -23,7 +23,7 @@ If `LOGS.md` is empty or missing, tell the user:
 > "⚠️ No history found for `<spec-id>`. The folder exists but no commands have been logged yet. Start with `/spec <feature-name>`."
 
 Otherwise, identify:
-- **The last command entry** (`/<command> completed | paused | failed`) — anchors what state the work is in
+- **The last command entry** (`/<command> completed | paused | failed`) — anchors what state the work is in. Change entries don't count; skip past them when looking for it.
 - **All change entries since that last command entry** — decisions, deviations, and corrections from the most recent step
 - **Counts** of command entries and change entries in the whole file
 
@@ -87,7 +87,11 @@ The `Where you are:` line is the only piece of original prose in the response �
 - `"Code review done with 2 blockers, 1 major. Next step: /fix 7."`
 - `"Spec written. Next step: /design 7."`
 
-If the last entry is `paused`, name what it's blocked on instead of a next command, e.g. `"Paused during /implement, blocked on: <Blocked on: value>."`
+If the last command entry is `paused`, name what it's blocked on and how to pick it back up. The change entries after it are the user's answers so far. E.g. `"Paused during /implement, blocked on: <Blocked on: value> — 2 answers logged. Re-run /implement 7 to continue."`
+
+If the last command entry is `failed`, give the reason and the re-run, e.g. `"/code-review failed: <Reason: value>. Re-run /code-review 7."` For a failed `/implement`, add that code may have changed on disk.
+
+Command statuses and spec states are defined in [`guides/vocabulary.md`](../../ptah/guides/vocabulary.md).
 
 If the workflow is complete (last entry is `/document completed`), the synthesis line is:
 
