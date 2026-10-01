@@ -1,8 +1,15 @@
-# /review
+---
+name: ptah-review
+description: 'Reviews a branch, range, or PR diff that has no Ptah spec behind it (typically someone else''s work) through the isolated, read-only ptah-reviewer subagent, and writes REVIEW.md under .claude/reviews/<name>/. Re-runs append a new pass. Use when the user runs /ptah-review.'
+argument-hint: '[<branch | range>] [--name <name>] [--<source> <id>] [--files <glob>]'
+disable-model-invocation: true
+---
 
-Review a branch or PR diff that has no Ptah spec behind it — typically **someone else's work**. Unlike `/code-review`, which checks in-flight work against its own `SPEC.md`/`DESIGN.md`, `/review` has no intent artifacts to compare against: the baseline is the diff itself, project conventions, and (optionally) a linked ticket.
+# /ptah-review
 
-Documentation only — `/review` never modifies the code under review. This command captures the diff (and the ticket, if any), then hands the actual judgment off to the `ptah-reviewer` subagent, which runs in its own fresh context and can only `Read`, `Grep`, `Glob` — it has no way to write or edit anything. Findings persist under `.claude/reviews/<review-name>/` and can optionally be handed to `/fix`.
+Review a branch or PR diff that has no Ptah spec behind it — typically **someone else's work**. Unlike `/ptah-code-review`, which checks in-flight work against its own `SPEC.md`/`DESIGN.md`, `/ptah-review` has no intent artifacts to compare against: the baseline is the diff itself, project conventions, and (optionally) a linked ticket.
+
+Documentation only — `/ptah-review` never modifies the code under review. This command captures the diff (and the ticket, if any), then hands the actual judgment off to the `ptah-reviewer` subagent, which runs in its own fresh context and can only `Read`, `Grep`, `Glob` — it has no way to write or edit anything. Findings persist under `.claude/reviews/<review-name>/` and can optionally be handed to `/ptah-fix`.
 
 ## Step 1 — Parse command arguments
 
@@ -17,12 +24,12 @@ The command accepts one optional positional argument (the diff target) plus opti
 - `--files <glob>` — narrow the review to matching paths only.
 
 Examples:
-- `/review` — review the current branch vs. default
-- `/review feature/login` — review that branch vs. its merge-base
-- `/review main..feature/login --jira PROJ-1234` — review the range against ticket intent
-- `/review feature/login --files "src/auth/**"` — scope to auth files only
+- `/ptah-review` — review the current branch vs. default
+- `/ptah-review feature/login` — review that branch vs. its merge-base
+- `/ptah-review main..feature/login --jira PROJ-1234` — review the range against ticket intent
+- `/ptah-review feature/login --files "src/auth/**"` — scope to auth files only
 
-**Unknown flags** produce an error consistent with `/spec` and `/fix`:
+**Unknown flags** produce an error consistent with `/ptah-spec` and `/ptah-fix`:
 
 > "⚠️ Unknown flag `--xyz`. Supported flags: `--name`, `--jira` (and other configured sources), `--files`."
 
@@ -41,7 +48,7 @@ If `.claude/reviews/<review-name>/` already exists, this is a **re-review** (the
 ### 2b. Load Ptah config (only if a source flag was passed)
 Read `.claude/ptah/ptah.yml`. The config is only needed to resolve a ticket flag — if no source flag was passed, skip straight to Step 3 (standards-only review).
 
-If a source flag was passed, resolve and fetch it using the same rules as `/spec` Step 2 (validate against `id_pattern`, fetch via `fetch_via`, **stop loudly on fetch failure** — do not fall back silently). Keep the fetched ticket content in memory — it gets written to disk in Step 3, since the reviewer subagent can't see anything held only in this conversation.
+If a source flag was passed, resolve and fetch it using the same rules as `/ptah-spec` Step 2 (validate against `id_pattern`, fetch via `fetch_via`, **stop loudly on fetch failure** — do not fall back silently). Keep the fetched ticket content in memory — it gets written to disk in Step 3, since the reviewer subagent can't see anything held only in this conversation.
 
 ---
 
@@ -115,9 +122,9 @@ Then continue to Step 6.
 Write nothing to `REVIEW.md`. Append a `failed` entry to `.claude/reviews/<review-name>/LOGS.md`, then skip to Step 7 and hand off as failed. If the result was malformed, offer to show the raw response.
 
 ```markdown
-## <YYYY-MM-DD HH:MM:SS> — /review failed (pass <N>)
+## <YYYY-MM-DD HH:MM:SS> — /ptah-review failed (pass <N>)
 - Reason: <from result, or "malformed result — <what was wrong>">
-- Next step: re-run /review
+- Next step: re-run /ptah-review
 ```
 
 ---
@@ -127,7 +134,7 @@ Write nothing to `REVIEW.md`. Append a `failed` entry to `.claude/reviews/<revie
 Append the completion entry to `.claude/reviews/<review-name>/LOGS.md` — the fields you own first, then the result's fields verbatim:
 
 ```markdown
-## <YYYY-MM-DD HH:MM:SS> — /review completed (pass <N>)
+## <YYYY-MM-DD HH:MM:SS> — /ptah-review completed (pass <N>)
 - Target: <target>
 - Base: <base-branch> @ <short-sha>
 - Source: <ticket-id, or "none">
@@ -148,54 +155,54 @@ This is a separate `LOGS.md` from any spec folder — it journals the review, no
 Use the hand-off format in [`guides/result-format.md`](../../ptah/guides/result-format.md), with the review name in place of a spec number:
 
 ```
-✅ /review <review-name> completed (pass <N>)
+✅ /ptah-review <review-name> completed (pass <N>)
 Artifact: `.claude/reviews/<review-name>/REVIEW.md`
 🔴 <blockers> | 🟡 <major> | 🟢 <minor> | 💡 <suggestions> — verdict: <verdict>
 Next: <see below>
 ```
 
 ```
-❌ /review <review-name> failed (pass <N>)
+❌ /ptah-review <review-name> failed (pass <N>)
 Reason: <Reason>
-Next: re-run /review
+Next: re-run /ptah-review
 ```
 
 **`Next:` for a completed review**, from the verdict:
 
-- `request-changes` — "share `REVIEW.md` with the author". Add the optional `/fix` hand-off **only** if the reviewer is on a branch they can modify — fixing someone else's PR is the author's job by default: "or, if this branch is yours to modify, `/fix --review <review-name>`".
+- `request-changes` — "share `REVIEW.md` with the author". Add the optional `/ptah-fix` hand-off **only** if the reviewer is on a branch they can modify — fixing someone else's PR is the author's job by default: "or, if this branch is yours to modify, `/ptah-fix --review <review-name>`".
 - `approve-with-minors` — "share `REVIEW.md` with the author; safe to merge at their discretion".
 - `approve` — "safe to merge".
 
 Use the same text for `Next step:` in Step 6.
 
-Do **not** auto-run `/fix`. `/review` is read-only on the codebase.
+Do **not** auto-run `/ptah-fix`. `/ptah-review` is read-only on the codebase.
 
 ---
 
-## What `/review` is and isn't
+## What `/ptah-review` is and isn't
 
 **It is:** a standalone review of a diff that has no spec behind it — for reviewing others' PRs, or any change that didn't go through the Ptah feature track.
 
-**It isn't:** `/code-review`. That command reviews *your own* in-flight work against its `SPEC.md`/`DESIGN.md` inside a spec folder, and is part of the `/spec → … → /document` pipeline. `/review` lives outside that pipeline entirely.
+**It isn't:** `/ptah-code-review`. That command reviews *your own* in-flight work against its `SPEC.md`/`DESIGN.md` inside a spec folder, and is part of the `/ptah-spec → … → /ptah-document` pipeline. `/ptah-review` lives outside that pipeline entirely.
 
-| | `/code-review` | `/review` |
+| | `/ptah-code-review` | `/ptah-review` |
 |---|---|---|
 | Input | a feature spec folder | a branch / PR diff |
 | Baseline | SPEC.md + DESIGN.md | the diff + CLAUDE.md (+ optional ticket) |
 | Output | `.claude/specs/<feature>/CODE-REVIEW.md` | `.claude/reviews/<name>/REVIEW.md` |
 | Part of the pipeline | yes | no |
-| Feeds `/fix` | yes (default) | optional (`/fix --review <name>`) |
+| Feeds `/ptah-fix` | yes (default) | optional (`/ptah-fix --review <name>`) |
 | Reviewer | isolated subagent `ptah-code-reviewer` | isolated subagent `ptah-reviewer` |
 
 ---
 
 ## Workflow
 
-`/review` is a standalone command, not part of the feature track:
+`/ptah-review` is a standalone command, not part of the feature track:
 
 ```
-/review <branch>            ← review a diff
-  └─ (optional) /fix --review <name>   ← if it's yours to modify
+/ptah-review <branch>            ← review a diff
+  └─ (optional) /ptah-fix --review <name>   ← if it's yours to modify
 ```
 
 It does not append to any spec's `LOGS.md` — only to its own review journal at `.claude/reviews/<review-name>/LOGS.md`.

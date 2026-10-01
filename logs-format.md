@@ -28,6 +28,8 @@ This guide defines the schema. The discipline (when to log, when not to) lives i
 6. **Order** — newest entries appended to the bottom (chronological), not the top
 7. **No prose** — entries are bullets only, no paragraphs
 
+Entries that name commands without the `ptah-` prefix (`— /spec completed`, `Next step: /design`) mean the same commands. Read them as their `/ptah-` equivalents, show the prefixed form to the user, and write new entries with the prefix only.
+
 Subagent results use these same field names, so a dispatcher copies them across rather than translating — see [`result-format.md`](./result-format.md).
 
 ---
@@ -42,7 +44,7 @@ These two have the same fields whichever command wrote them.
 - Files touched (comma-separated paths, or `none`)
 - Next step (`answer the open questions, then re-run /<command>`)
 
-Written by `/design` and `/implement` when their subagent returns `needs-input`. The user's answers follow as `decision` / `deviation` / `scope-change` change entries, and a re-run picks up from there.
+Written by `/ptah-design` and `/ptah-implement` when their subagent returns `needs-input`. The user's answers follow as `decision` / `deviation` / `scope-change` change entries, and a re-run picks up from there.
 
 ### `/<command> failed`
 - Reason (one line)
@@ -54,19 +56,19 @@ Written when a subagent returns `error` or a malformed result. No artifact is wr
 
 ## `completed` — per-command fields (required, in order)
 
-### `/spec completed`
+### `/ptah-spec completed`
 - Feature
 - Source (ticket ID or `none`)
 - Key decisions
 - Next step
 
-### `/design completed`
+### `/ptah-design completed`
 - Approach
 - Key decisions
 - Open questions (count or `none`)
 - Next step
 
-### `/implement completed`
+### `/ptah-implement completed`
 - Summary
 - Files created (count)
 - Files modified (count)
@@ -74,16 +76,16 @@ Written when a subagent returns `error` or a malformed result. No artifact is wr
 - Known issues (`yes — <note>` or `no`)
 - Next step
 
-### `/code-review completed`
+### `/ptah-code-review completed`
 - 🔴 Blockers (count)
 - 🟡 Major (count)
 - 🟢 Minor (count)
 - 💡 Suggestions (count)
 - Acceptance criteria (`X of Y met`)
 - Verdict (`fix-needed` or `ready-to-document`)
-- Next step (`/fix` or `/document`, from the verdict)
+- Next step (`/ptah-fix` or `/ptah-document`, from the verdict)
 
-### `/fix completed`
+### `/ptah-fix completed`
 - Mode (`auto`, `plan`, or `interactive`)
 - 🔴 Blockers fixed (count)
 - 🟡 Major issues fixed (count)
@@ -91,19 +93,19 @@ Written when a subagent returns `error` or a malformed result. No artifact is wr
 - 💡 Suggestions fixed (count, or `none`)
 - Skipped by user (count, or `none` — includes findings marked already fixed)
 - New issues found (`yes — <note>` or `no`)
-- Next step (`/document`)
+- Next step (`/ptah-document`)
 
-### `/fix completed (pass <N>)`
+### `/ptah-fix completed (pass <N>)`
 
-`/fix --review <name>`, written to `.claude/reviews/<review-name>/LOGS.md`. Same fields as `/fix completed`, except:
+`/ptah-fix --review <name>`, written to `.claude/reviews/<review-name>/LOGS.md`. Same fields as `/ptah-fix completed`, except:
 
-- Next step (`/review <target> --name <review-name>`)
+- Next step (`/ptah-review <target> --name <review-name>`)
 
-### `/document completed`
+### `/ptah-document completed`
 - Summary file written (`README.md`)
 - Next step (`none — workflow complete`)
 
-### `/review completed (pass <N>)` / `/review failed (pass <N>)`
+### `/ptah-review completed (pass <N>)` / `/ptah-review failed (pass <N>)`
 
 Written to `.claude/reviews/<review-name>/LOGS.md`, never to a spec's `LOGS.md`.
 
@@ -143,36 +145,36 @@ Entries written before the vocabulary was fixed may use `scope change`, `user re
 ## Example
 
 ```markdown
-## 2026-04-23 09:14:22 — /spec completed
+## 2026-04-23 09:14:22 — /ptah-spec completed
 - Feature: account creation with excluded from net worth toggle
 - Source: PROJ-42
 - Key decisions: toggle defaults to false
-- Next step: /design
+- Next step: /ptah-design
 
-## 2026-04-23 11:47:03 — /design completed
+## 2026-04-23 11:47:03 — /ptah-design completed
 - Approach: new boolean field on accounts table + UI toggle in form
 - Key decisions: reuse existing form component
 - Open questions: none
-- Next step: /implement
+- Next step: /ptah-implement
 
-## 2026-04-23 14:22:18 — /implement paused
+## 2026-04-23 14:22:18 — /ptah-implement paused
 - Blocked on: whether archived accounts count toward net worth
 - Progress: form component and migration written
 - Files touched: src/accounts/AccountForm.tsx, db/migrations/0042_archived.sql
-- Next step: answer the open questions, then re-run /implement
+- Next step: answer the open questions, then re-run /ptah-implement
 
-## 2026-04-23 14:25:40 — change during /implement
+## 2026-04-23 14:25:40 — change during /ptah-implement
 - Trigger: user-request
 - Type: scope-change
 - What: archived accounts are excluded from net worth and hidden by default
 - Why: resolves "should archived accounts still count toward net worth?"
 - Impact: DESIGN.md updated, migration needs an `archived` column
 
-## 2026-04-23 16:05:33 — /implement completed
+## 2026-04-23 16:05:33 — /ptah-implement completed
 - Summary: account creation form with excluded-from-net-worth toggle
 - Files created: 3
 - Files modified: 4
 - Deviations from design: yes — see change entries above
 - Known issues: no
-- Next step: /code-review
+- Next step: /ptah-code-review
 ```

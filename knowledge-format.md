@@ -2,7 +2,7 @@
 
 `knowledge.db` is Ptah's persistent knowledge base — a SQLite file at `.claude/ptah/knowledge/knowledge.db`, committed to git alongside the rest of the project. `ptah_knowledge.py` is the **only** thing that reads or writes it; no command touches it with raw SQL. `INDEX.md`, in the same folder, is a disposable, auto-regenerated mirror — never hand-edited, always safe to overwrite.
 
-This guide defines the schema and CLI contract. The discipline — when `/learn` fires, what workflow commands do with `INDEX.md`, how this stays disjoint from `LOGS.md` — lives in `RULES.md` under "Knowledge discipline."
+This guide defines the schema and CLI contract. The discipline — when `/ptah-learn` fires, what workflow commands do with `INDEX.md`, how this stays disjoint from `LOGS.md` — lives in `RULES.md` under "Knowledge discipline."
 
 ---
 
@@ -29,7 +29,7 @@ Requires Python 3, stdlib only (`sqlite3`, `json`, `argparse`) — no new binari
 | `category` | `TEXT` | One of the seven fixed categories below — enforced by `CHECK` |
 | `confidence` | `TEXT` | `verified` or `suspected` — enforced by `CHECK` |
 | `body` | `TEXT` | The full writeup |
-| `source_command` | `TEXT` | Which command was running when this was captured, e.g. `/implement ptah-7-user-login`. `NULL` if captured manually outside any command. |
+| `source_command` | `TEXT` | Which command was running when this was captured, e.g. `/ptah-implement ptah-7-user-login`. `NULL` if captured manually outside any command. |
 | `added_at` | `TEXT` | ISO 8601 UTC timestamp |
 
 ### Categories (fixed — seven only)
@@ -49,7 +49,7 @@ Requires Python 3, stdlib only (`sqlite3`, `json`, `argparse`) — no new binari
 - `verified` — confirmed true: reproduced, tested, or documented upstream
 - `suspected` — observed once, plausible, not yet confirmed
 
-Not a formality — `/recall` and the workflow commands' consult-index step both surface confidence alongside every result, so a `suspected` gotcha never gets read with the same weight as a `verified` one.
+Not a formality — `/ptah-recall` and the workflow commands' consult-index step both surface confidence alongside every result, so a `suspected` gotcha never gets read with the same weight as a `verified` one.
 
 ### `tags` — free-form, many-to-many
 
@@ -87,7 +87,7 @@ Mirrors `title` + `body` for free-text search. Kept in sync by SQL triggers on `
 
 ## `ptah_knowledge.py` CLI contract
 
-Every subcommand prints JSON to stdout — this is what `/learn` and `/recall` parse, so the shape is load-bearing, not cosmetic. `<id>` is the plain integer, e.g. `42`.
+Every subcommand prints JSON to stdout — this is what `/ptah-learn` and `/ptah-recall` parse, so the shape is load-bearing, not cosmetic. `<id>` is the plain integer, e.g. `42`.
 
 ```
 python3 .claude/ptah/ptah_knowledge.py init
@@ -95,7 +95,7 @@ python3 .claude/ptah/ptah_knowledge.py init
 
 python3 .claude/ptah/ptah_knowledge.py add \
     --title "..." --category gotcha --confidence verified \
-    --body "..." [--tags "jwt,auth"] [--source "/implement ptah-7-user-login"] \
+    --body "..." [--tags "jwt,auth"] [--source "/ptah-implement ptah-7-user-login"] \
     [--relates-to 12] [--relates-to 34:supersedes]
     → inserts the entry, regenerates INDEX.md, prints {"status":"ok","id":"<n>"}
 
@@ -122,6 +122,6 @@ Invalid category, confidence, relation, or a `--relates-to` target that doesn't 
 
 ## `INDEX.md`
 
-Regenerated in full on every `add` — never hand-edited, never diffed against a previous version, just overwritten. One table per category (categories with zero entries are omitted), columns: ID, Title (with `→ <id>` suffixes for outgoing edges), Tags, Confidence. Full `body` text is never in `INDEX.md` — that's what `get` / `/recall <id>` is for.
+Regenerated in full on every `add` — never hand-edited, never diffed against a previous version, just overwritten. One table per category (categories with zero entries are omitted), columns: ID, Title (with `→ <id>` suffixes for outgoing edges), Tags, Confidence. Full `body` text is never in `INDEX.md` — that's what `get` / `/ptah-recall <id>` is for.
 
-This is the only file the main-session workflow commands (`/fix`, `/document`) read when consulting prior knowledge, and the only one the subagents (`ptah-designer`, `ptah-implementer`, `ptah-code-reviewer`, `ptah-reviewer`) read too — see "Knowledge discipline" in `RULES.md`. None of them query `knowledge.db` directly.
+This is the only file the main-session workflow commands (`/ptah-fix`, `/ptah-document`) read when consulting prior knowledge, and the only one the subagents (`ptah-designer`, `ptah-implementer`, `ptah-code-reviewer`, `ptah-reviewer`) read too — see "Knowledge discipline" in `RULES.md`. None of them query `knowledge.db` directly.

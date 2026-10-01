@@ -1,15 +1,22 @@
-# /fix
+---
+name: ptah-fix
+description: 'Applies findings from a Ptah CODE-REVIEW.md (or the latest pass of a standalone /ptah-review) in auto, plan, or interactive mode, lets the user steer by finding code, and appends a Fix Summary. Use when the user runs /ptah-fix with a spec number or --review <name>.'
+argument-hint: '<spec-id> | --review <name> [--auto | --plan | --interactive] [--include-minor | --blockers-only]'
+disable-model-invocation: true
+---
+
+# /ptah-fix
 
 Read review findings and fix all blocker and major issues. Record what was changed next to the findings.
 
-`/fix` works from one of two sources:
+`/ptah-fix` works from one of two sources:
 
-- **A spec** — `/fix <spec-id>` — fixes findings from `.claude/specs/<feature-name>/CODE-REVIEW.md`. This is the feature track.
-- **A standalone review** — `/fix --review <review-name>` — fixes findings from the latest pass of `.claude/reviews/<review-name>/REVIEW.md`, written by `/review`.
+- **A spec** — `/ptah-fix <spec-id>` — fixes findings from `.claude/specs/<feature-name>/CODE-REVIEW.md`. This is the feature track.
+- **A standalone review** — `/ptah-fix --review <review-name>` — fixes findings from the latest pass of `.claude/reviews/<review-name>/REVIEW.md`, written by `/ptah-review`.
 
 Every finding carries a code assigned by the reviewer — `B1`, `B2` for 🔴 blockers, `M1` for 🟡 major, `N1` for 🟢 minor, `S1` for 💡 suggestions. The user steers individual findings by code; see **Directives by code** in Step 5. Severities, codes, and fix modes are defined in [`guides/vocabulary.md`](../../ptah/guides/vocabulary.md).
 
-`/fix` supports three modes that control how much the agent asks before applying fixes. The default is `plan`. See **Modes & config** below.
+`/ptah-fix` supports three modes that control how much the agent asks before applying fixes. The default is `plan`. See **Modes & config** below.
 
 ## Step 1 — Parse command arguments
 
@@ -23,17 +30,17 @@ The command takes exactly one source — a positional spec identifier (see **Spe
 - `--blockers-only` — exclude 🟢 minor issues even if config includes them
 
 Examples:
-- `/fix 3` — uses mode from `ptah.yml`, or `plan` if no config
-- `/fix 3 --auto` — applies all fixes silently this run
-- `/fix 3 --interactive --include-minor` — asks per finding, includes minors
-- `/fix --review feature-login` — fixes the latest pass of that review
+- `/ptah-fix 3` — uses mode from `ptah.yml`, or `plan` if no config
+- `/ptah-fix 3 --auto` — applies all fixes silently this run
+- `/ptah-fix 3 --interactive --include-minor` — asks per finding, includes minors
+- `/ptah-fix --review feature-login` — fixes the latest pass of that review
 
 **Source errors** stop the command:
 
 - No spec identifier and no `--review`, or both:
-  > "⚠️ `/fix` needs exactly one source: a spec number (`/fix 3`) or `--review <review-name>`."
+  > "⚠️ `/ptah-fix` needs exactly one source: a spec number (`/ptah-fix 3`) or `--review <review-name>`."
 - `--review` without a value:
-  > "⚠️ `--review` needs a review name, e.g. `/fix --review feature-login`."
+  > "⚠️ `--review` needs a review name, e.g. `/ptah-fix --review feature-login`."
 
 **Mutually-exclusive flag pairs** produce an error and stop:
 - `--auto`, `--plan`, `--interactive` (pick one)
@@ -41,7 +48,7 @@ Examples:
 
 > "⚠️ Conflicting flags: `<flag1>` and `<flag2>`. Pick one."
 
-**Unknown flags** produce an error consistent with `/spec`:
+**Unknown flags** produce an error consistent with `/ptah-spec`:
 
 > "⚠️ Unknown flag `--xyz`. Supported flags: `--review`, `--auto`, `--plan`, `--interactive`, `--include-minor`, `--blockers-only`."
 
@@ -63,7 +70,7 @@ Read `.claude/ptah/ptah.yml`.
 - `--include-minor` forces `include_minor: true`
 - `--blockers-only` forces `include_minor: false`
 
-The config file is never modified by `/fix`. Flags only affect the current run.
+The config file is never modified by `/ptah-fix`. Flags only affect the current run.
 
 ### 2c. Compute in-scope findings
 - Always in scope: 🔴 `B` and 🟡 `M` findings
@@ -88,12 +95,12 @@ Read:
 
 If `CODE-REVIEW.md` is empty or missing, stop:
 
-> "⚠️ No code review found for `<spec-id>`. Run `/code-review <n>` first."
+> "⚠️ No code review found for `<spec-id>`. Run `/ptah-code-review <n>` first."
 
 ### 3b. Review source
-Sanitize `<review-name>` the same way `/review` does (lowercase, whitespace and slashes become `-`). If `.claude/reviews/<review-name>/` doesn't exist, stop:
+Sanitize `<review-name>` the same way `/ptah-review` does (lowercase, whitespace and slashes become `-`). If `.claude/reviews/<review-name>/` doesn't exist, stop:
 
-> "⚠️ No review found named `<review-name>`. Run `/review` first."
+> "⚠️ No review found named `<review-name>`. Run `/ptah-review` first."
 
 Read:
 
@@ -106,15 +113,15 @@ Fix from the **latest pass only** — the block under the last `> **Pass:** <N>`
 
 **Branch check.** Take the head branch from the latest pass's `> **Target:**` line and compare it with the current branch (`git rev-parse --abbrev-ref HEAD`). If they differ, stop:
 
-> "⚠️ Review `<review-name>` is for `<head-branch>`, but you're on `<current-branch>`. Check out `<head-branch>` and re-run — `/fix` changes the working tree."
+> "⚠️ Review `<review-name>` is for `<head-branch>`, but you're on `<current-branch>`. Check out `<head-branch>` and re-run — `/ptah-fix` changes the working tree."
 
 ### 3c. Nothing in scope
 If no findings are in scope after Step 2c, write nothing and hand off using the format in [`guides/result-format.md`](../../ptah/guides/result-format.md):
 
 ```
-✅ /fix <n> — nothing in scope          (review source: "/fix --review <review-name> — nothing in scope (pass <N>)")
+✅ /ptah-fix <n> — nothing in scope          (review source: "/ptah-fix --review <review-name> — nothing in scope (pass <N>)")
 Out of scope: <codes, or "none"> — pull any in with --include-minor, or by code in plan mode
-Next: /document <n>          (review source: nothing to do until the next /review pass)
+Next: /ptah-document <n>          (review source: nothing to do until the next /ptah-review pass)
 ```
 
 ### 3d. Consult prior knowledge
@@ -248,7 +255,7 @@ The Fix Summary is structurally identical across all three modes and both source
 **Spec source** — append to `.claude/specs/<feature-name>/LOGS.md`:
 
 ```markdown
-## <YYYY-MM-DD HH:MM:SS> — /fix completed
+## <YYYY-MM-DD HH:MM:SS> — /ptah-fix completed
 - Mode: <auto | plan | interactive>
 - 🔴 Blockers fixed: <count>
 - 🟡 Major issues fixed: <count>
@@ -256,13 +263,13 @@ The Fix Summary is structurally identical across all three modes and both source
 - 💡 Suggestions fixed: <count, or "none">
 - Skipped by user: <count, or "none">
 - New issues found: <"no", or "yes — <brief note>">
-- Next step: /document
+- Next step: /ptah-document
 ```
 
 **Review source** — append to `.claude/reviews/<review-name>/LOGS.md`:
 
 ```markdown
-## <YYYY-MM-DD HH:MM:SS> — /fix completed (pass <N>)
+## <YYYY-MM-DD HH:MM:SS> — /ptah-fix completed (pass <N>)
 - Mode: <auto | plan | interactive>
 - 🔴 Blockers fixed: <count>
 - 🟡 Major issues fixed: <count>
@@ -270,7 +277,7 @@ The Fix Summary is structurally identical across all three modes and both source
 - 💡 Suggestions fixed: <count, or "none">
 - Skipped by user: <count, or "none">
 - New issues found: <"no", or "yes — <brief note>">
-- Next step: /review <target> --name <review-name>
+- Next step: /ptah-review <target> --name <review-name>
 ```
 
 `<target>` comes from the latest pass's `> **Target:**` line. See [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
@@ -290,21 +297,21 @@ Use the hand-off format in [`guides/result-format.md`](../../ptah/guides/result-
 **Spec source:**
 
 ```
-✅ /fix <n> completed
+✅ /ptah-fix <n> completed
 Artifact: `.claude/specs/<feature-name>/CODE-REVIEW.md` (fix summary appended)
 Mode: <mode> — fixed: <codes> · skipped: <codes, or "none"> · deferred: <codes, or "none">
 New issues found: <"no", or "yes — <note>">
-Next: /document <n>
+Next: /ptah-document <n>
 ```
 
 **Review source:**
 
 ```
-✅ /fix --review <review-name> completed (pass <N>)
+✅ /ptah-fix --review <review-name> completed (pass <N>)
 Artifact: `.claude/reviews/<review-name>/REVIEW.md` (fix summary appended)
 Mode: <mode> — fixed: <codes> · skipped: <codes, or "none"> · deferred: <codes, or "none">
 New issues found: <"no", or "yes — <note>">
-Next: commit the changes, then /review <target> --name <review-name> for pass <N+1>
+Next: commit the changes, then /ptah-review <target> --name <review-name> for pass <N+1>
 ```
 
 Use the number, not the full folder name, when telling the user what to run next — see **Spec identifiers** in `RULES.md`.
@@ -313,7 +320,7 @@ Use the number, not the full folder name, when telling the user what to run next
 
 ## Modes & config
 
-`/fix` has three modes:
+`/ptah-fix` has three modes:
 
 | Mode | Behavior |
 |------|----------|
@@ -340,7 +347,7 @@ Both keys are optional. Missing keys fall back to defaults.
 - `--include-minor` — force `include_minor: true` for this run
 - `--blockers-only` — force `include_minor: false` for this run
 
-Conflicting flags produce an error and stop. The config file is never modified by `/fix`.
+Conflicting flags produce an error and stop. The config file is never modified by `/ptah-fix`.
 
 ### The stop-and-ask rule always applies
 
@@ -350,16 +357,16 @@ Regardless of mode, the **Stop and ask** rule from `RULES.md` applies — if a f
 
 ## Workflow
 
-On the feature track, `/fix` sits between review and documentation:
+On the feature track, `/ptah-fix` sits between review and documentation:
 
 ```
-/spec → /design → /implement → /code-review → /fix → /document
+/ptah-spec → /ptah-design → /ptah-implement → /ptah-code-review → /ptah-fix → /ptah-document
 ```
 
-On a standalone review, `/fix --review` closes the loop with `/review`:
+On a standalone review, `/ptah-fix --review` closes the loop with `/ptah-review`:
 
 ```
-/review <branch> → /fix --review <name> → /review <branch> (next pass) → ...
+/ptah-review <branch> → /ptah-fix --review <name> → /ptah-review <branch> (next pass) → ...
 ```
 
 Each command appends an entry to its own `LOGS.md` — the spec's for the feature track, the review's for a standalone review. When resuming after a break, read `LOGS.md` first to understand where the work stands.

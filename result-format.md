@@ -80,7 +80,7 @@ Field formats are defined in [`logs-format.md`](./logs-format.md) under each com
 
 ## Hand-off
 
-Every command's final message to the user, including meta-commands that produce a result (`/review`) and excluding purely read-only ones (`/status`, `/resume`, `/continue`, `/recall`, `/learn` — they have their own formats).
+Every command's final message to the user, including meta-commands that produce a result (`/ptah-review`) and excluding purely read-only ones (`/ptah-status`, `/ptah-resume`, `/ptah-continue`, `/ptah-recall`, `/ptah-learn` — they have their own formats).
 
 ```
 <icon> /<command> <n> <status>
@@ -90,7 +90,7 @@ Next: <`/<next-command> <n>`, or what the user needs to do>
 ```
 
 - **Icon and status** come from the command status in `vocabulary.md` — ✅ `completed`, ⏸️ `paused`, ❌ `failed`.
-- **`<n>`** is the spec number only, never the slug — see **Spec identifiers** in `RULES.md`. `/review` uses the review name instead.
+- **`<n>`** is the spec number only, never the slug — see **Spec identifiers** in `RULES.md`. `/ptah-review` uses the review name instead.
 - **`Artifact:`** is the full path, since the user opens it. Omit the line when no artifact was written (`paused`, `failed`).
 - **Key facts** are what the user should look at before moving on: counts, open questions, deviations, the blocker or failure reason. One to three lines, no more.
 - **`Next:`** matches the `Next step:` just written to `LOGS.md`, with the spec number added so it's directly runnable.
@@ -100,8 +100,8 @@ The hand-off comes after everything else — files written, `LOGS.md` appended, 
 ### Example
 
 ```
-✅ /code-review 3 completed
+✅ /ptah-code-review 3 completed
 Artifact: `.claude/specs/ptah-3-user-login/CODE-REVIEW.md`
 🔴 1 | 🟡 2 | 🟢 3 | 💡 1 — acceptance criteria 4 of 5 met
-Next: /fix 3
+Next: /ptah-fix 3
 ```
