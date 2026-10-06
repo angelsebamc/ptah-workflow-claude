@@ -1,4 +1,11 @@
-# /status
+---
+name: ptah-status
+description: 'Lists every in-flight Ptah spec with its state (failed, paused, active, just started) and the next command to run, read from each spec''s LOGS.md. Read-only. Use when the user runs /ptah-status, or at the start of a clean session to see what''s in flight.'
+argument-hint: '[--all]'
+disable-model-invocation: true
+---
+
+# /ptah-status
 
 List all in-flight specs with their current state. Use this to discover what's been started but not finished — the typical first command when sitting down to a clean session.
 
@@ -6,7 +13,7 @@ By default, hides completed work to reduce noise. Pass `--all` to include comple
 
 ## Step 1 — Read the context
 
-When the user runs `/status` (or `/status --all`), apply the **Always read LOGS.md first** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — `/status` _is_ the rule applied broadly: it reads every `LOGS.md` to surface state.
+When the user runs `/ptah-status` (or `/ptah-status --all`), apply the **Always read LOGS.md first** rule from [`.claude/ptah/RULES.md`](../../ptah/RULES.md) — `/ptah-status` _is_ the rule applied broadly: it reads every `LOGS.md` to surface state.
 
 Scan this location:
 - `.claude/specs/ptah-*/LOGS.md` — one per feature (also include any legacy non-numbered folders under `.claude/specs/*/LOGS.md`)
@@ -15,7 +22,7 @@ For each match, note the **full folder name** (`ptah-<n>-<slug>`) — this is wh
 
 If the folder doesn't exist or is empty, tell the user:
 
-> "No specs found. Run `/spec <name>` to start one."
+> "No specs found. Run `/ptah-spec <name>` to start one."
 
 ---
 
@@ -29,7 +36,7 @@ Spec states are defined in [`guides/vocabulary.md`](../../ptah/guides/vocabulary
 
 | Last command entry | State | Icon |
 |---|---|---|
-| `/document completed` | `completed` | ✅ |
+| `/ptah-document completed` | `completed` | ✅ |
 | any `paused` | `paused` | ⏸️ |
 | any `failed` | `failed` | ❌ |
 | any other `completed` | `active` | 🔄 |
@@ -52,7 +59,7 @@ If `--all` was passed, **include** everything.
 
 If after filtering nothing remains, tell the user:
 
-> "Nothing in flight. Run `/status --all` to see completed work too, or `/spec <name>` to start something new."
+> "Nothing in flight. Run `/ptah-status --all` to see completed work too, or `/ptah-spec <name>` to start something new."
 
 ---
 
@@ -79,7 +86,7 @@ Use this exact format — the identifier column shows the **full spec name** (`p
   ✅ ptah-2-onboarding-flow      completed YYYY-MM-DD
 ```
 
-Include the spec number (not the full name) in the `next:` line so it's directly runnable (e.g. `next: /fix 7`). For `paused` and `failed`, the next command is the one that paused or failed — re-running it picks up from `LOGS.md`. Omit `(<k> answered so far)` when no answers have been logged yet.
+Include the spec number (not the full name) in the `next:` line so it's directly runnable (e.g. `next: /ptah-fix 7`). For `paused` and `failed`, the next command is the one that paused or failed — re-running it picks up from `LOGS.md`. Omit `(<k> answered so far)` when no answers have been logged yet.
 
 Left-align the identifier column, padding to the longest name in the list so the status text lines up. Keep the icon column consistent (one space after the icon, then the identifier). Truncate `blocked on:` and `reason:` to one line — full detail is in `LOGS.md`.
 
@@ -91,25 +98,25 @@ Legacy specs without a `ptah-<n>` folder name are listed the same way, using the
 
 End with a short prompt that points the user toward the next move:
 
-> "Run `/resume <n>` to load context for one, or run the suggested `next:` command directly if you're ready to continue."
+> "Run `/ptah-resume <n>` to load context for one, or run the suggested `next:` command directly if you're ready to continue."
 
-Do **not** automatically run any command. `/status` is read-only — it never modifies files or appends to `LOGS.md`.
+Do **not** automatically run any command. `/ptah-status` is read-only — it never modifies files or appends to `LOGS.md`.
 
 ---
 
 ## Workflow
 
-`/status` is a meta-command — it sits above the workflow:
+`/ptah-status` is a meta-command — it sits above the workflow:
 
 ```
-/status              ← discovery (you are here)
-/resume <n>          ← load context for a specific spec
-/spec, /design, ... ← actual work commands
+/ptah-status              ← discovery (you are here)
+/ptah-resume <n>          ← load context for a specific spec
+/ptah-spec, /ptah-design, ... ← actual work commands
 ```
 
-Use `/status` when:
+Use `/ptah-status` when:
 - Sitting down to a clean session and you've forgotten what's in flight
 - Wondering whether a feature got finished or got stuck
 - Auditing the project before a teammate asks "what's the state of X?"
 
-`/status` does not append to any `LOGS.md` — it's purely a read.
+`/ptah-status` does not append to any `LOGS.md` — it's purely a read.

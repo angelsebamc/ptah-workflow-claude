@@ -1,6 +1,6 @@
 ---
 name: ptah-code-reviewer
-description: Reviews an implemented Ptah spec against its SPEC.md and DESIGN.md, in a fresh context with no knowledge of how the implementation session went. Read-only — never edits or writes files, returns findings as text. Invoked internally by /code-review. Not for arbitrary branch/PR review — use ptah-reviewer for that.
+description: Reviews an implemented Ptah spec against its SPEC.md and DESIGN.md, in a fresh context with no knowledge of how the implementation session went. Read-only — never edits or writes files, returns findings as text. Invoked internally by /ptah-code-review. Not for arbitrary branch/PR review — use ptah-reviewer for that.
 tools: Read, Grep, Glob
 model: inherit
 ---
@@ -23,7 +23,7 @@ Read, in this order:
 - `<folder>/IMPLEMENTATION.md` — what the implementer says was built
 - `<folder>/LOGS.md` — session history
 - `CLAUDE.md` (project root) — project conventions, stack, architecture decisions
-- `.claude/ptah/knowledge/INDEX.md`, if it exists — project-wide knowledge captured via `/learn`. Scan it for anything relevant to this feature's area before reviewing the code. If it doesn't exist, skip silently — this is expected on a project where nothing's been captured yet, not an error. Never write to it or to `knowledge.db`; reviewing is read-only, and capture is `/learn`-only regardless.
+- `.claude/ptah/knowledge/INDEX.md`, if it exists — project-wide knowledge captured via `/ptah-learn`. Scan it for anything relevant to this feature's area before reviewing the code. If it doesn't exist, skip silently — this is expected on a project where nothing's been captured yet, not an error. Never write to it or to `knowledge.db`; reviewing is read-only, and capture is `/ptah-learn`-only regardless.
 
 Then read every file listed under "Files created" / "Files modified" in `IMPLEMENTATION.md`.
 
@@ -108,7 +108,7 @@ Suggestion: <alternative approach>
 ===END===
 ````
 
-Number each severity's findings from 1, in the order they appear (`B1`, `B2`, … `M1`, …). `/fix` and the user refer to findings by these codes, so every finding gets exactly one, and a code is never reused within a review.
+Number each severity's findings from 1, in the order they appear (`B1`, `B2`, … `M1`, …). `/ptah-fix` and the user refer to findings by these codes, so every finding gets exactly one, and a code is never reused within a review.
 
 `Verdict` is `fix-needed` if there's at least one blocker or major finding, `ready-to-document` otherwise. The counts must match the findings in `CODE-REVIEW.md` exactly.
 

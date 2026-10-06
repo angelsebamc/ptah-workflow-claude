@@ -1,4 +1,11 @@
-# /spec
+---
+name: ptah-spec
+description: 'Starts a new Ptah feature spec: creates the numbered spec folder (ptah-<n>-<slug>) and fills SPEC.md through a one-question-at-a-time conversation, optionally pre-filled from a JIRA/Linear/GitHub ticket configured in ptah.yml. First step of the Ptah pipeline. Use when the user runs /ptah-spec or wants to start defining a new feature.'
+argument-hint: '<feature-name> [--<source> <id>]'
+disable-model-invocation: true
+---
+
+# /ptah-spec
 
 Create a new feature spec folder and guide the user through defining a solid use case before moving to design.
 
@@ -9,9 +16,9 @@ If the project has a **Ptah config** (`.claude/ptah/ptah.yml`) with external con
 The command accepts one positional argument (the feature name) plus optional source flags defined in `ptah.yml`.
 
 Examples:
-- `/spec user-login` — plain feature, no external ticket
-- `/spec user-login --jira PROJ-1234` — pulls context from JIRA ticket PROJ-1234
-- `/spec user-login --linear ENG-42` — pulls from Linear (if configured)
+- `/ptah-spec user-login` — plain feature, no external ticket
+- `/ptah-spec user-login --jira PROJ-1234` — pulls context from JIRA ticket PROJ-1234
+- `/ptah-spec user-login --linear ENG-42` — pulls from Linear (if configured)
 
 The feature name is **not** used as the folder name directly — it's kebab-cased into a slug, and the folder itself is numbered automatically from `ptah.yml`. See Step 3 and **Spec identifiers** in [`.claude/ptah/RULES.md`](../../ptah/RULES.md).
 
@@ -46,7 +53,7 @@ Call the MCP server named in `fetch_via` to retrieve the ticket content.
 
 > "❌ Failed to fetch `<source>` ticket `<id>`: <error message>.
 >
-> Fix the issue and re-run the command, or run `/spec <feature-name>` without the flag to proceed manually."
+> Fix the issue and re-run the command, or run `/ptah-spec <feature-name>` without the flag to proceed manually."
 
 **Do not fall back silently.** If the user asked for the flag, they want the data — not a silent shrug.
 
@@ -86,9 +93,9 @@ Create the following structure at `.claude/specs/ptah-<n>-<slug>/`:
 .claude/specs/ptah-<n>-<slug>/
   LOGS.md           ← running session journal, appended by every command
   SPEC.md           ← will be filled via conversation
-  DESIGN.md         ← empty, filled by /design
-  IMPLEMENTATION.md ← empty, filled by /implement
-  CODE-REVIEW.md    ← empty, filled by /code-review
+  DESIGN.md         ← empty, filled by /ptah-design
+  IMPLEMENTATION.md ← empty, filled by /ptah-implement
+  CODE-REVIEW.md    ← empty, filled by /ptah-code-review
   refs/             ← empty folder for screenshots, mockups, references
 ```
 
@@ -197,11 +204,11 @@ If no external context was loaded, omit the `> **Source:**` line entirely.
 After writing SPEC.md, append the following entry to `LOGS.md`:
 
 ```markdown
-## <YYYY-MM-DD HH:MM:SS> — /spec completed
+## <YYYY-MM-DD HH:MM:SS> — /ptah-spec completed
 - Feature: <one-line summary of the feature>
 - Source: <ticket-id, or "none">
 - Key decisions: <any important choices made during the conversation>
-- Next step: /design
+- Next step: /ptah-design
 ```
 
 See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-format.md) for the full schema.
@@ -213,11 +220,11 @@ See **LOGS.md format** in [`guides/logs-format.md`](../../ptah/guides/logs-forma
 After writing both files, hand off using the format in [`guides/result-format.md`](../../ptah/guides/result-format.md):
 
 ```
-✅ /spec <n> completed
+✅ /ptah-spec <n> completed
 Artifact: `.claude/specs/ptah-<n>-<slug>/SPEC.md`
 <count> acceptance criteria · source: <ticket-id, or "none">
 Add any screenshots, mockups, or schema snippets to `refs/` before designing.
-Next: /design <n>
+Next: /ptah-design <n>
 ```
 
 ---
@@ -227,7 +234,7 @@ Next: /design <n>
 This command is part of the feature track of the Ptah workflow:
 
 ```
-/spec → /design → /implement → /code-review → /fix → /document
+/ptah-spec → /ptah-design → /ptah-implement → /ptah-code-review → /ptah-fix → /ptah-document
 ```
 
 Each command appends a session entry to `LOGS.md`. When resuming after a break, read `LOGS.md` first to understand where the feature stands.

@@ -3,7 +3,7 @@
 ptah_knowledge.py — sole interface to Ptah's knowledge base (knowledge.db).
 
 No other script or command should open knowledge.db directly. This script is
-called by /learn (writes) and /recall (reads), and regenerates INDEX.md as a
+called by /ptah-learn (writes) and /ptah-recall (reads), and regenerates INDEX.md as a
 side effect of every write. See guides/knowledge-format.md for the schema,
 and INDEX.md itself for the human-readable mirror this script maintains.
 
@@ -263,7 +263,7 @@ def regenerate_index(conn):
     lines = [
         "# Knowledge index",
         f"_Regenerated {datetime.now(timezone.utc).isoformat(timespec='seconds')} "
-        f"— do not hand-edit, run /learn or /recall to refresh_",
+        f"— do not hand-edit, run /ptah-learn or /ptah-recall to refresh_",
         "",
     ]
     any_entries = False
@@ -289,7 +289,7 @@ def regenerate_index(conn):
             lines.append(f"| {fmt_id(entry_id)} | {title}{arrow} | {tags or ''} | {confidence} |")
         lines.append("")
     if not any_entries:
-        lines.append("_No entries yet — run `/learn` to capture the first one._")
+        lines.append("_No entries yet — run `/ptah-learn` to capture the first one._")
     INDEX_PATH.write_text("\n".join(lines), encoding="utf-8")
 
 

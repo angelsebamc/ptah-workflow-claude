@@ -1,6 +1,6 @@
 # Ptah vocabulary
 
-Every fixed value Ptah uses — in `LOGS.md`, in subagent results, in hand-offs, in `/status` — is defined here and only here. Other files reference this guide instead of repeating the lists.
+Every fixed value Ptah uses — in `LOGS.md`, in subagent results, in hand-offs, in `/ptah-status` — is defined here and only here. Other files reference this guide instead of repeating the lists.
 
 Values are **kebab-case**, lowercase, and exact. A value that isn't on its list is an error, never something to coerce to the nearest match — same "hard failures over silent fallbacks" principle as the rest of Ptah.
 
@@ -13,7 +13,7 @@ The `<status>` in a `LOGS.md` command entry heading: `## <timestamp> — /<comma
 | Value | Meaning | Written when |
 |---|---|---|
 | `completed` | The command produced its artifact | The command finishes normally |
-| `paused` | The command stopped to wait for the user | A subagent returned `needs-input` (`/design`, `/implement`) |
+| `paused` | The command stopped to wait for the user | A subagent returned `needs-input` (`/ptah-design`, `/ptah-implement`) |
 | `failed` | The command stopped without producing its artifact | A subagent returned `error`, or a malformed result |
 
 Field schemas for each status: [`logs-format.md`](./logs-format.md).
@@ -32,15 +32,15 @@ Only `ptah-designer` and `ptah-implementer` return `needs-input`. The reviewers 
 
 ## Spec state
 
-What `/status` shows for a spec, derived from its **last command entry** — change entries are ignored for this.
+What `/ptah-status` shows for a spec, derived from its **last command entry** — change entries are ignored for this.
 
 | Value | Icon | Last command entry |
 |---|---|---|
 | `just-started` | 🆕 | none yet |
-| `active` | 🔄 | any `completed`, other than `/document completed` |
+| `active` | 🔄 | any `completed`, other than `/ptah-document completed` |
 | `paused` | ⏸️ | any `paused` |
 | `failed` | ❌ | any `failed` |
-| `completed` | ✅ | `/document completed` |
+| `completed` | ✅ | `/ptah-document completed` |
 
 ## Change type
 
@@ -67,9 +67,9 @@ The `Trigger:` field of a `LOGS.md` change entry.
 
 ## Finding severity
 
-Used by `/code-review`, `/review`, and `/fix`.
+Used by `/ptah-code-review`, `/ptah-review`, and `/ptah-fix`.
 
-| Value | Icon | Code | Meaning | `/fix` default |
+| Value | Icon | Code | Meaning | `/ptah-fix` default |
 |---|---|---|---|---|
 | `blocker` | 🔴 | `B<n>` | Bug, crash, security risk, data loss | always in scope |
 | `major` | 🟡 | `M<n>` | Logic issue, missing edge case, test gap | always in scope |
@@ -78,17 +78,17 @@ Used by `/code-review`, `/review`, and `/fix`.
 
 ### Finding codes
 
-Every finding carries a code: the severity's letter plus a number, e.g. `B1`, `M2`, `S1`. Numbering restarts at 1 for each severity, in the order findings appear in the review (per pass, for `/review`). Codes are how `/fix` and the user refer to findings — to steer a fix, skip one, or pull in an out-of-scope minor or suggestion.
+Every finding carries a code: the severity's letter plus a number, e.g. `B1`, `M2`, `S1`. Numbering restarts at 1 for each severity, in the order findings appear in the review (per pass, for `/ptah-review`). Codes are how `/ptah-fix` and the user refer to findings — to steer a fix, skip one, or pull in an out-of-scope minor or suggestion.
 
 ## Verdict
 
 | Command | Value | Meaning | Next step |
 |---|---|---|---|
-| `/code-review` | `fix-needed` | At least one blocker or major finding | `/fix` |
-| `/code-review` | `ready-to-document` | No blockers or major findings | `/document` |
-| `/review` | `request-changes` | At least one blocker or major finding | share with the author, or `/fix --review` |
-| `/review` | `approve-with-minors` | Only minor findings or suggestions | merge at the author's discretion |
-| `/review` | `approve` | Clean | merge |
+| `/ptah-code-review` | `fix-needed` | At least one blocker or major finding | `/ptah-fix` |
+| `/ptah-code-review` | `ready-to-document` | No blockers or major findings | `/ptah-document` |
+| `/ptah-review` | `request-changes` | At least one blocker or major finding | share with the author, or `/ptah-fix --review` |
+| `/ptah-review` | `approve-with-minors` | Only minor findings or suggestions | merge at the author's discretion |
+| `/ptah-review` | `approve` | Clean | merge |
 
 ## Fix mode
 

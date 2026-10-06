@@ -8,7 +8,7 @@
 #
 # If this file doesn't exist, or sections are missing,
 # the workflow falls back to sensible defaults (manual mode for
-# context sources, `plan` mode for /fix, next spec numbered 1).
+# context sources, `plan` mode for /ptah-fix, next spec numbered 1).
 
 # ---------------------------------------------------------------
 # Per-command behavior
@@ -18,7 +18,7 @@
 # ---------------------------------------------------------------
 commands:
 
-  # /fix — how the agent handles code review findings.
+  # /ptah-fix — how the agent handles code review findings.
   fix:
     # How much the agent asks before applying fixes.
     # Options:
@@ -45,11 +45,11 @@ commands:
 # ---------------------------------------------------------------
 # Spec numbering
 #
-# Tracks the next number /spec will assign to a new spec folder
-# (ptah-<n>-<slug>). /spec reads this value, uses it, and writes
+# Tracks the next number /ptah-spec will assign to a new spec folder
+# (ptah-<n>-<slug>). /ptah-spec reads this value, uses it, and writes
 # next_id + 1 back — it never scans .claude/specs/ to work out the
 # next number. If this file (or this section) doesn't exist yet,
-# /spec treats the next id as 1 and creates it on first use.
+# /ptah-spec treats the next id as 1 and creates it on first use.
 #
 # You can hand-edit this if you need to (e.g. after manually
 # deleting a spec folder and wanting to reclaim a gap) — just don't
@@ -63,7 +63,7 @@ specs:
 # Context sources
 #
 # Wire up external ticket services (JIRA, Linear, GitHub) so that
-# /spec and /task can pre-fill from a linked ticket.
+# /ptah-spec and /task can pre-fill from a linked ticket.
 # Leave empty (or omit) to run in fully manual mode.
 # ---------------------------------------------------------------
 context_sources:

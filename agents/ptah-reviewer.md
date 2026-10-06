@@ -1,6 +1,6 @@
 ---
 name: ptah-reviewer
-description: Reviews a branch/PR diff that has no Ptah spec behind it, in a fresh context with no knowledge of any prior conversation. Read-only — never edits files, returns findings as text. Invoked internally by /review. Not for in-flight Ptah spec work — use ptah-code-reviewer for that.
+description: Reviews a branch/PR diff that has no Ptah spec behind it, in a fresh context with no knowledge of any prior conversation. Read-only — never edits files, returns findings as text. Invoked internally by /ptah-review. Not for in-flight Ptah spec work — use ptah-code-reviewer for that.
 tools: Read, Grep, Glob
 model: inherit
 ---
@@ -28,7 +28,7 @@ Read, in this order:
 - `.claude/reviews/<review-name>/diff.patch` — the diff under review
 - `CLAUDE.md` (project root) — project conventions, stack, patterns
 - `.claude/reviews/<review-name>/ticket.md`, if a ticket was linked
-- `.claude/ptah/knowledge/INDEX.md`, if it exists — project-wide knowledge captured via `/learn`. Scan it for anything relevant to the files touched by this diff. If it doesn't exist, skip silently. Never write to it or to `knowledge.db` — reviewing is read-only, and capture is `/learn`-only regardless.
+- `.claude/ptah/knowledge/INDEX.md`, if it exists — project-wide knowledge captured via `/ptah-learn`. Scan it for anything relevant to the files touched by this diff. If it doesn't exist, skip silently. Never write to it or to `knowledge.db` — reviewing is read-only, and capture is `/ptah-learn`-only regardless.
 
 There is no `SPEC.md` / `DESIGN.md` here. Derive the change's intent from the diff itself, the branch name, the commit messages in the diff, and the ticket if one was linked.
 
@@ -114,7 +114,7 @@ Suggestion: <alternative approach>
 ===END===
 ````
 
-Number each severity's findings from 1 within this pass, in the order they appear (`B1`, `B2`, … `M1`, …). `/fix --review` and the author refer to findings by these codes, so every finding gets exactly one.
+Number each severity's findings from 1 within this pass, in the order they appear (`B1`, `B2`, … `M1`, …). `/ptah-fix --review` and the author refer to findings by these codes, so every finding gets exactly one.
 
 `Verdict` is `request-changes` if there's at least one blocker or major finding, `approve-with-minors` if there are only minors or suggestions, `approve` if there are none. The counts must match the findings exactly.
 
